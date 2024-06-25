@@ -82,12 +82,12 @@ class BLESimplePeripheral:
 #def demo():
 #    ble = bluetooth.BLE()
 #    p = BLESimplePeripheral(ble)
-#
+
 #    def on_rx(v):
 #        print("RX", v)
-#
+
 #    p.on_write(on_rx)
-#
+
 #    i = 0
 #    while True:
 #        if p.is_connected():

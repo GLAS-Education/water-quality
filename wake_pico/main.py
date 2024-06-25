@@ -3,6 +3,8 @@ from btlib.ble_simple_peripheral import BLESimplePeripheral
 from machine import Pin, ADC, I2C, RTC
 
 # Check for TODO before next deploy!!!!!
+# TODO: Log water level in SD data, too (if Dylan has not already done)
+# TODO (!!!): Program quits after a bit with a memory error. Will uncommenting the SD card code fix this (getting things off memory and into the actual storage)? EDIT: I think so. Test it, though.
 
 try:
     
@@ -12,16 +14,24 @@ try:
 
     water = ADC(Pin(26))
         
+    # -- Broadcast bluetooth signal -- #
+    
+    ble = bluetooth.BLE()
+    ble_sp = BLESimplePeripheral(ble)
+    
+    def on_rx(v):
+        print("Message from Bluetooth (RX):", v)
+
+    ble_sp.on_write(on_rx)
             
     # -- Microphone + LED Stuff -- #
-    
 
     sound_average = 0
     potential_wave = 0
     wave_detected = False
     microphone_disturbance_list = []
     analog_value = machine.ADC(28)
-    conversion_factor =3.3/(65536)
+    conversion_factor = 3.3/(65535)
     led = Pin(15, Pin.OUT)
     led.value(1)
     time.sleep(1)
@@ -29,22 +39,20 @@ try:
 
 
     # -- SD Card Stuff -- #
-    
-    # TODO: uncomment once readers are back, INCLUDING ALL WHERE WE OPEN("/sd/...")
 
     # Assign chip select (CS) pin (and start it high)
-    #cs = machine.Pin(1, machine.Pin.OUT)
+    cs = machine.Pin(1, machine.Pin.OUT)
     
 
     # Intialize SPI peripheral (start with 1 MHz)
-    #spi = machine.SPI(0, baudrate=1000000, polarity=0, phase=0, bits=8, firstbit=machine.SPI.MSB, sck=machine.Pin(2), mosi=machine.Pin(3), miso=machine.Pin(4))
+    spi = machine.SPI(0, baudrate=1000000, polarity=0, phase=0, bits=8, firstbit=machine.SPI.MSB, sck=machine.Pin(2), mosi=machine.Pin(3), miso=machine.Pin(4))
 
 
     # Initialize SD card
-    #sd = sdcard.SDCard(spi, cs)
+    sd = sdcard.SDCard(spi, cs)
     # Mount filesystem
-    #vfs = uos.VfsFat(sd)
-    #uos.mount(vfs, "/sd")
+    vfs = uos.VfsFat(sd)
+    uos.mount(vfs, "/sd")
 
 
 
@@ -74,13 +82,9 @@ try:
     i3c=I2C(0, scl=Pin(17), sda=Pin(16))
     print(i3c.scan())
     r=machine.RTC()
-    print("a")
     ds = ds1307.DS1307(i3c)
-    print("b")
     ds.halt(False)    #Reads the RTC
-    print("c")
     ds = ds.datetime()
-    print("d")
     #print(ds)
     rtc = RTC()
     rtc.datetime((ds[0], ds[1], ds[2], ds[3]+1, ds[4], ds[5], ds[6], 0))
@@ -89,8 +93,8 @@ try:
     # -- Detects Reboot and Writes it to SD Card -- #
 
 
-    #with open("/sd/sound.txt", "a") as file:
-    #        file.write("Reboot detected" + "\n")
+    with open("/sd/sound.txt", "a") as file:
+        file.write("Reboot detected" + "\n")
             
             
 
@@ -115,7 +119,8 @@ try:
     else:
         print("Connected!")
         status = wlan.ifconfig()
-        print(f"IP: {status[0]}")
+        pa'
+        rint(f"IP: {status[0]}")
     addr = socket.getaddrinfo("0.0.0.0", 80)[0][-1]
     s = socket.socket()
     s.bind(addr)
@@ -139,6 +144,8 @@ try:
 
     # -- Main Operation Loop -- #
 
+    old_rot = (0, 0, 0) # for 9D orientation visualization purposes
+
 
     while True:
         
@@ -156,10 +163,6 @@ try:
         if water_detected > 20000:
             water_level = "Wet - Water Level High"
             # water_level determines how wet the interior of the buoy is
-    
-        # -- Send current stats over bluetooth -- #
-    
-        ble_sp.send(f"{main_iterations};{water_detected}")
 
         
         # -- Updates and Sets Internal Clock -- #
@@ -192,6 +195,7 @@ try:
         
         
         sound_reading = round(analog_value.read_u16()*conversion_factor, 2)
+        print(analog_value.read_u16())
         time.sleep(1)
         #print(sound_reading)
         """
@@ -238,7 +242,7 @@ try:
             potential_wave = 0
             wave_detected = False
             
-        print(file_sound_reading, sound_average)
+        print("Sound:", file_sound_reading, sound_reading, sound_average)
         
         
         #print(wave_detected, potential_wave, sound_reading, sound_average)
@@ -248,10 +252,10 @@ try:
         # -- If no wave is detected it will write to the sound file -- #
         
         
-        #if sound_reading < 2.2 or wave_detected == False:
+        if sound_reading < 2.2 or wave_detected == False:
         
-            #with open("/sd/sound.txt", "a") as file:
-            #    file.write(date + ";" + file_sound_reading + "\n")
+            with open("/sd/sound.txt", "a") as file:
+                file.write(date + ";" + file_sound_reading + "\n")
            
            
         
@@ -347,12 +351,12 @@ try:
                 # -- Writes wave data + sound to a wave file and continues to write sound to the sound file -- #
                 
                 
-                #with open("/sd/wave.txt", "a") as f:
-                #    f.write(date + ";" + file_sound_reading + ";" + f"{'\n'.join(data)}\n")
-                #    data = []
-                #    f.close()
-                #with open("/sd/sound.txt", "a") as file:
-                #    file.write(date + ";" + file_sound_reading + "\n")
+                with open("/sd/wave.txt", "a") as f:
+                    f.write(date + ";" + file_sound_reading + ";" + f"{'\n'.join(data)}\n")
+                    data = []
+                    f.close()
+                with open("/sd/sound.txt", "a") as file:
+                    file.write(date + ";" + file_sound_reading + "\n")
                     
                 time.sleep(0.25)
                 wave_timer = wave_timer +0.25
@@ -368,17 +372,24 @@ try:
                     missed_scheduled_reboot = True
 
                 
+        # -- Send current stats over bluetooth -- #
+    
+        rotational_change = abs(sensor.euler[0] - old_rot[0]) + abs(sensor.euler[1] - old_rot[1]) + abs(sensor.euler[2] - old_rot[2]) # Helps visualize if the 9D orientation sensor is working well
+        old_rot = sensor.euler
+        if ble_sp.is_connected():
+            ble_sp.send(f"WAKE;{main_iterations};{sound_reading};{water_detected};{sensor.euler[0]};{sensor.euler[1]};{sensor.euler[2]};{rotational_change}")
+        
         # -- Reboots if it's time or if it missed its reboot while a wave was present -- #
 
             
         if clock[4] == 12 and clock[5] == 00 and clock[6] >= 00 and clock[6] <= 10 and voltage >= 4.00:
-                #with open("/sd/sound.txt", "a") as file:
-                #    file.write(date + ";" + "\n" + "Scheduled Reboot..." + "\n")
+                with open("/sd/sound.txt", "a") as file:
+                    file.write(date + ";" + "\n" + "Scheduled Reboot..." + "\n")
                 machine.reset()
 
         if missed_scheduled_reboot == True and voltage >= 4.00:
-            #with open("/sd/sound.txt", "a") as file:
-            #        file.write(date + ";" + "\n" + "Scheduled Reboot..." + "\n")
+            with open("/sd/sound.txt", "a") as file:
+                    file.write(date + ";" + "\n" + "Scheduled Reboot..." + "\n")
             machine.reset()
 
 
