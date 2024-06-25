@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		9F11DCF42C2356CB004D2721 /* DebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F11DCF32C2356CB004D2721 /* DebugView.swift */; };
 		9F11DCF62C2361B7004D2721 /* DataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F11DCF52C2361B7004D2721 /* DataView.swift */; };
+		9FA9F3222C24C2B8008EB239 /* orientation_dummy.scn in Resources */ = {isa = PBXBuildFile; fileRef = 9FA9F3212C24C2B8008EB239 /* orientation_dummy.scn */; };
 		9FEF53AF2C2335EB005CBA63 /* AppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FEF53AE2C2335EB005CBA63 /* AppMain.swift */; };
 		9FEF53B12C2335EB005CBA63 /* ConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FEF53B02C2335EB005CBA63 /* ConnectView.swift */; };
 		9FEF53B32C2335EC005CBA63 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9FEF53B22C2335EC005CBA63 /* Assets.xcassets */; };
@@ -19,6 +20,7 @@
 /* Begin PBXFileReference section */
 		9F11DCF32C2356CB004D2721 /* DebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugView.swift; sourceTree = "<group>"; };
 		9F11DCF52C2361B7004D2721 /* DataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataView.swift; sourceTree = "<group>"; };
+		9FA9F3212C24C2B8008EB239 /* orientation_dummy.scn */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = orientation_dummy.scn; sourceTree = "<group>"; };
 		9FEF53AB2C2335EB005CBA63 /* GLAS Water Quality Connect.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GLAS Water Quality Connect.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FEF53AE2C2335EB005CBA63 /* AppMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMain.swift; sourceTree = "<group>"; };
 		9FEF53B02C2335EB005CBA63 /* ConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectView.swift; sourceTree = "<group>"; };
@@ -38,6 +40,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		9F01069B2C24A6BD0000554E /* 3DModels */ = {
+			isa = PBXGroup;
+			children = (
+				9FA9F3212C24C2B8008EB239 /* orientation_dummy.scn */,
+			);
+			path = 3DModels;
+			sourceTree = "<group>";
+		};
 		9FEF53A22C2335EB005CBA63 = {
 			isa = PBXGroup;
 			children = (
@@ -64,6 +74,7 @@
 				9FEF53B42C2335EC005CBA63 /* Preview Content */,
 				9F11DCF32C2356CB004D2721 /* DebugView.swift */,
 				9F11DCF52C2361B7004D2721 /* DataView.swift */,
+				9F01069B2C24A6BD0000554E /* 3DModels */,
 			);
 			path = "GLAS Water Quality Connect";
 			sourceTree = "<group>";
@@ -144,6 +155,7 @@
 			files = (
 				9FEF53B62C2335EC005CBA63 /* Preview Assets.xcassets in Resources */,
 				9FEF53B32C2335EC005CBA63 /* Assets.xcassets in Resources */,
+				9FA9F3222C24C2B8008EB239 /* orientation_dummy.scn in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

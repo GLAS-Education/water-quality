@@ -31,7 +31,6 @@ struct DebugView: View {
             Button("Clear") {
                 sharedState.bluetoothManager.storedData = []
                 sharedState.bluetoothManager.rawSignals = []
-                signals = []
             }
             .foregroundStyle(.red)
         }

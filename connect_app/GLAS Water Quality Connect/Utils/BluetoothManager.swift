@@ -1,5 +1,5 @@
 //
-//  DeviceSearcher.swift
+//  BluetoothManager.swift
 //  GLAS Water Quality Connect
 //
 //  Created by Teddy Lampert on 6/19/24.
@@ -7,7 +7,6 @@
 
 import Foundation
 import CoreBluetooth
-import Charts
 
 struct Device: Identifiable, Hashable {
     var id: UUID { address }
@@ -17,7 +16,12 @@ struct Device: Identifiable, Hashable {
 
 enum DataType {
     case runtime
+    case soundLevel
     case waterLevel
+    case eulerX
+    case eulerY
+    case eulerZ
+    case rotationalChange
 }
 
 struct DataEntry {
@@ -43,7 +47,7 @@ class BluetoothManager: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate
         case .poweredOff:
             print("BLE is powered off")
         case .poweredOn:
-            print("BLE is poweredOn")
+            print("BLE is powered on")
         case .resetting:
             print("BLE is resetting")
         case .unauthorized:
@@ -152,16 +156,25 @@ class BluetoothManager: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate
             self.storedData.append(dataEntry)
         }
         
-        if self.storedData.count > (5000 * 2) {
-            self.storedData.removeFirst(self.storedData.count - (5000 * 2))
+        if self.storedData.count > (5000 * 5) {
+            self.storedData.removeFirst(self.storedData.count - (5000 * 5))
         }
     }
     
     func parseData(input: String) -> [DataEntry] {
         let values = input.split(separator: ";")
-        return [
-            DataEntry(type: .runtime, value: Double(values[0]) as Any),
-            DataEntry(type: .waterLevel, value: Double(values[1]) as Any)
-        ]
+        if values[0] == "WAKE" {
+            return [
+                DataEntry(type: .runtime, value: Int(values[1]) as Any),
+                DataEntry(type: .soundLevel, value: Double(values[2]) as Any),
+                DataEntry(type: .waterLevel, value: Int(values[3]) as Any),
+                DataEntry(type: .eulerX, value: Double(values[4]) as Any),
+                DataEntry(type: .eulerY, value: Double(values[5]) as Any),
+                DataEntry(type: .eulerZ, value: Double(values[6]) as Any),
+                DataEntry(type: .rotationalChange, value: Double(values[7]) as Any)
+            ]
+        } else {
+            return []
+        }
     }
 }
