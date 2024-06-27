@@ -1,240 +1,100 @@
-
-#!/usr/bin/env python
 """
-================================================
-AB Electronics UK: RTC Pi Real-time clock
-Raspberry Pi Pico MicroPython Library
-================================================
+MicroPython TinyRTC I2C Module, DS1307 RTC + AT24C32N EEPROM
+https://github.com/mcauser/micropython-tinyrtc-i2c
+
+MIT License
+Copyright (c) 2018 Mike Causer
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+BCD Format:
+https://en.wikipedia.org/wiki/Binary-coded_decimal
 """
-import machine
-import re
 
+from micropython import const
 
-class RTC:
-    """
-    Based on the Maxim DS1307
-    """
+DATETIME_REG = const(0) # 0x00-0x06
+CHIP_HALT    = const(128)
+CONTROL_REG  = const(7) # 0x07
+RAM_REG      = const(8) # 0x08-0x3F
 
-    # define registers from the datasheet
-    SECONDS = 0x00
-    MINUTES = 0x01
-    HOURS = 0x02
-    DAYOFWEEK = 0x03
-    DAY = 0x04
-    MONTH = 0x05
-    YEAR = 0x06
-    CONTROL = 0x07
+class DS1307(object):
+    """Driver for the DS1307 RTC."""
+    def __init__(self, i2c, addr=0x68):
+        self.i2c = i2c
+        self.addr = addr
+        self.weekday_start = 1
+        self._halt = False
 
-    # variables
-    __rtcaddress = 0x68  # I2C address
-    # initial configuration - square wave and output disabled, frequency set
-    # to 32.768KHz.
-    __rtcconfig = 0x03
-    # the DS1307 does not store the current century so that has to be added on
-    # manually.
-    __century = 2000
+    def _dec2bcd(self, value):
+        """Convert decimal to binary coded decimal (BCD) format"""
+        return (value // 10) << 4 | (value % 10)
 
-    __weekday_start = 1
-    
-    __bus = None
+    def _bcd2dec(self, value):
+        """Convert binary coded decimal (BCD) format to decimal"""
+        return ((value >> 4) * 10) + (value & 0x0F)
 
-    # local methods
+    def datetime(self, datetime=None):
+        """Get or set datetime"""
+        if datetime is None:
+            buf = self.i2c.readfrom_mem(self.addr, DATETIME_REG, 7)
+            return (
+                self._bcd2dec(buf[6]) + 2000, # year
+                self._bcd2dec(buf[5]), # month
+                self._bcd2dec(buf[4]), # day
+                self._bcd2dec(buf[3] - self.weekday_start), # weekday
+                self._bcd2dec(buf[2]), # hour
+                self._bcd2dec(buf[1]), # minute
+                self._bcd2dec(buf[0] & 0x7F), # second
+                0 # subseconds
+            )
+        buf = bytearray(7)
+        buf[0] = self._dec2bcd(datetime[6]) & 0x7F # second, msb = CH, 1=halt, 0=go
+        buf[1] = self._dec2bcd(datetime[5]) # minute
+        buf[2] = self._dec2bcd(datetime[4]) # hour
+        buf[3] = self._dec2bcd(datetime[3] + self.weekday_start) # weekday
+        buf[4] = self._dec2bcd(datetime[2]) # day
+        buf[5] = self._dec2bcd(datetime[1]) # month
+        buf[6] = self._dec2bcd(datetime[0] - 2000) # year
+        if (self._halt):
+            buf[0] |= (1 << 7)
+        self.i2c.writeto_mem(self.addr, DATETIME_REG, buf)
 
-    @staticmethod
-    def __updatebyte(byte, bit, value):
-        """
-        Internal method for setting the value of a single bit within a byte
-        :param byte: input value
-        :type byte: int
-        :param bit: location to update
-        :type bit: int
-        :param value: new bit, 0 or 1
-        :type value: int
-        :return: updated value
-        :rtype: int
-        """
-
-        if value == 0:
-            return byte & ~(1 << bit)
-        elif value == 1:
-            return byte | (1 << bit)
-
-    @staticmethod
-    def __bcd_dec(bcd):
-        """
-        Internal method for converting BCD format number to decimal
-        :param bcd: BCD formatted number
-        :type bcd: int
-        :return: decimal number
-        :rtype: int
-        """
-        return bcd - 6 * (bcd >> 4)
-
-    @staticmethod
-    def __dec_bcd(dec):
-        """
-        Internal method for converting a decimal formatted number to BCD
-        :param dec: decimal number
-        :type dec: int
-        :return: BCD formatted number
-        :rtype: int
-        """
-        bcd = 0
-        for vala in (dec // 10, dec % 10):
-            for valb in (8, 4, 2, 1):
-                if vala >= valb:
-                    bcd += 1
-                    vala -= valb
-                bcd <<= 1
-        return bcd >> 1
-
-    
-    # public methods
-
-    def __init__(self, sda=None, scl=None):
-        """
-        Initialise the RTC module
-        :param address: sda pin
-        :type address: int
-        :param address: scl pin
-        :type address: int
-        """
-        if sda == None or sda < 0 or sda > 40:           
-            sdaPIN=machine.Pin(20)
+    def halt(self, val=None):
+        """Power up, power down or check status"""
+        if val is None:
+            return self._halt
+        reg = self.i2c.readfrom_mem(self.addr, DATETIME_REG, 1)[0]
+        if val:
+            reg |= CHIP_HALT
         else:
-            sdaPIN=machine.Pin(sda)
-            
-        if scl == None or scl < 0 or scl > 40:           
-            sclPIN=machine.Pin(21)
-        else:
-            sclPIN=machine.Pin(scl)
+            reg &= ~CHIP_HALT
+        self._halt = bool(val)
+        self.i2c.writeto_mem(self.addr, DATETIME_REG, bytearray([reg]))
 
-        self.__bus = machine.I2C(0,sda=sdaPIN, scl=sclPIN, freq=100000)
-        self.__bus.writeto_mem(self.__rtcaddress, self.CONTROL,bytearray(self.__rtcconfig))
-        
-        return
+    def square_wave(self, sqw=0, out=0):
+        """Output square wave on pin SQ at 1Hz, 4.096kHz, 8.192kHz or 32.768kHz,
+        or disable the oscillator and output logic level high/low."""
+        rs0 = 1 if sqw == 4 or sqw == 32 else 0
+        rs1 = 1 if sqw == 8 or sqw == 32 else 0
+        out = 1 if out > 0 else 0
+        sqw = 1 if sqw > 0 else 0
+        reg = rs0 | rs1 << 1 | sqw << 4 | out << 7
+        self.i2c.writeto_mem(self.addr, CONTROL_REG, bytearray([reg]))
 
-    def set_date(self, date):
-        """
-        Set the date and time on the RTC
-        :param date:  Year, Month, Day, dayofweek, Hour, Minute, Seconds, 0
-        :type date: array
-        """
-        writeval = [self.__dec_bcd(date[6]),
-                    self.__dec_bcd(date[5]),
-                    self.__dec_bcd(date[4]),
-                    self.__dec_bcd(date[3] + self.__weekday_start),
-                    self.__dec_bcd(date[2]),
-                    self.__dec_bcd(date[1]),
-                    self.__dec_bcd(date[0]) - self.__century]
-
-        self.__bus.writeto_mem(self.__rtcaddress, 0x00,bytearray(writeval))
-       
-        return
-
-    def read_date(self):
-        """
-        Read the date and time from the RTC
-        :return: array
-        :rtype: array
-        """
-        readval = self.__bus.readfrom_mem(self.__rtcaddress, 0, 7)
-        
-        date = ((self.__bcd_dec(readval[6]) + self.__century,
-                                                   self.__bcd_dec(readval[5]),
-                                                   self.__bcd_dec(readval[4]),
-                                                   self.__bcd_dec(readval[2]),
-                                                   self.__bcd_dec(readval[1]),
-                                                   self.__bcd_dec(readval[0])))
-       
-        return date
-
-    def enable_output(self):
-        """
-        Enable the output pin
-        """
-
-        self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 7, 1)
-        self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 4, 1)
-        self.__bus.writeto_mem(self.__rtcaddress, self.CONTROL, bytearray(self.__rtcconfig))
-        return
-
-    def disable_output(self):
-        """
-        Disable the output pin
-        """
-
-        self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 7, 0)
-        self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 4, 0)
-        self.__bus.writeto_mem(self.__rtcaddress, self.CONTROL, bytearray(self.__rtcconfig))
-        return
-
-    def set_frequency(self, frequency):
-        """
-        Set the frequency of the output pin square-wave
-        :param frequency: 1 = 1Hz, 2 = 4.096KHz, 3 = 8.192KHz, 4 = 32.768KHz
-        :type frequency: int
-        """
-
-        if frequency == 1:
-            self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 0, 0)
-            self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 1, 0)
-        if frequency == 2:
-            self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 0, 1)
-            self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 1, 0)
-        if frequency == 3:
-            self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 0, 0)
-            self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 1, 1)
-        if frequency == 4:
-            self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 0, 1)
-            self.__rtcconfig = self.__updatebyte(self.__rtcconfig, 1, 1)        
-        self.__bus.writeto_mem(self.__rtcaddress, self.CONTROL, bytearray(self.__rtcconfig))
-        return
-
-    def write_memory(self, address, valuearray):
-        """
-        Write to the memory on the DS1307
-        The DS1307 contains 56-Byte, battery-backed RAM with Unlimited Writes
-        :param address: 0x08 to 0x3F
-        :type address: int
-        :param valuearray: byte array containing data to be written to memory
-        :type valuearray: int array
-        :raises ValueError: write_memory: memory overflow error,
-                            address length exceeds 0x3F
-        :raises ValueError: write_memory: address out of range
-        """
-
-        if address >= 0x08 and address <= 0x3F:
-            if address + len(valuearray) <= 0x3F:
-                self.__bus.writeto_mem(self.__rtcaddress, address,bytearray(valuearray))
-            else:
-                raise ValueError('write_memory: memory overflow error: address + \
-                                length exceeds 0x3F')
-        else:
-            raise ValueError('write_memory: address out of range')
-
-    def read_memory(self, address, length):
-        """
-        Read from the memory on the DS1307
-        The DS1307 contains 56-Byte, battery-backed RAM with Unlimited Writes
-        :param address: 0x08 to 0x3F
-        :type address: int
-        :param length: number of bytes to read, up to 32 bytes.
-                       length can not exceed the address space.
-        :type length: int
-        :raises ValueError: read_memory: memory overflow error,
-                            address length exceeds 0x3F
-        :raises ValueError: read_memory: address out of range
-        :return: array of bytes from RAM
-        :rtype: int array
-        """
-
-        if address >= 0x08 and address <= 0x3F:
-            if address <= (0x3F - length):
-                return self.__bus.readfrom_mem(self.__rtcaddress,address,length)
-
-            else:
-                raise ValueError('read_memory: memory overflow error: address + \
-                                length exceeds 0x3F')
-        else:
-            raise ValueError('read_memory: address out of range')
