@@ -58,7 +58,7 @@ struct ConnectView: View {
         .onAppear {
             sharedState.bluetoothManager.runScan()
             Timer.scheduledTimer(withTimeInterval: 0.025, repeats: true) { _ in
-                devices = Array(Set(connected != nil ? sharedState.bluetoothManager.devices + [connected!] : sharedState.bluetoothManager.devices))
+                devices = Array(Set(connected != nil ? sharedState.bluetoothManager.devices + [connected!] : sharedState.bluetoothManager.devices)).sorted { $0.name < $1.name }
                 connected = sharedState.bluetoothManager.connected
                 loading = nil
             }

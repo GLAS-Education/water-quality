@@ -14,18 +14,29 @@ struct Device: Identifiable, Hashable {
     var address: UUID
 }
 
+enum DeviceType {
+    case mainPico
+    case wakePico
+    case unknown
+}
+
 enum DataType {
     case runtime
+    case realTimeClock
+    case batteryVoltage
     case soundLevel
     case waterLevel
     case eulerX
     case eulerY
     case eulerZ
     case rotationalChange
+    case temperature1
+    case temperature2
 }
 
 struct DataEntry {
     var type: DataType
+    var key: Any?
     var value: Any
 }
 
@@ -34,6 +45,7 @@ class BluetoothManager: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate
     var raw_peripherals: [CBPeripheral] = []
     var devices: [Device] = []
     var connected: Device?
+    var deviceType: DeviceType?
     var storedData: [DataEntry] = []
     var rawSignals: [String] = []
     
@@ -65,14 +77,14 @@ class BluetoothManager: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate
         
         self.refreshCurrent()
         
-        self.centralManager!.scanForPeripherals(withServices: [CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")])
+        self.centralManager!.scanForPeripherals(withServices: [CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"), CBUUID(string: "854E5F88-24B2-476B-A9D8-82469D83CC4B")])
         Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] timer in
             self?.centralManager!.stopScan()
         }
     }
     
     func refreshCurrent() {
-        let connected = centralManager?.retrieveConnectedPeripherals(withServices: [CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")])
+        let connected = centralManager?.retrieveConnectedPeripherals(withServices: [CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"), CBUUID(string: "854E5F88-24B2-476B-A9D8-82469D83CC4B")])
         if connected!.count != 0 {
             self.connected = Device(name: connected![0].name!, address: connected![0].identifier)
         } else {
@@ -92,17 +104,20 @@ class BluetoothManager: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate
         centralManager?.connect(peripheral!, options: nil)
         self.connected = device
         
-        let transferCharacteristic = CBMutableCharacteristic(type: CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"), properties: [.notify, .writeWithoutResponse], value: nil, permissions: [.readable, .writeable])
-        let transferService = CBMutableService(type: CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"), primary: true)
+        let transferCharacteristic = CBMutableCharacteristic(type: CBUUID(string: "C4BD5EA9-A500-450A-B68E-1442C0F77C46"), properties: [.notify, .writeWithoutResponse], value: nil, permissions: [.readable, .writeable])
+        let transferService = CBMutableService(type: CBUUID(string: "C4BD5EA9-A500-450A-B68E-1442C0F77C46"), primary: true)
         transferService.characteristics = [transferCharacteristic]
     }
     
     func unpairDevice() {
-        let connected = centralManager?.retrieveConnectedPeripherals(withServices: [CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")])
+        let connected = centralManager?.retrieveConnectedPeripherals(withServices: [CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"), CBUUID(string: "854E5F88-24B2-476B-A9D8-82469D83CC4B")])
         if connected!.count != 0 {
             centralManager?.cancelPeripheralConnection(connected![0])
         }
         self.connected = nil
+        self.deviceType = nil
+        self.storedData = []
+        self.rawSignals = []
     }
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
@@ -163,17 +178,29 @@ class BluetoothManager: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate
     
     func parseData(input: String) -> [DataEntry] {
         let values = input.split(separator: ";")
-        if values[0] == "WAKE" {
+        if values[0] == "MAIN" {
+            deviceType = .mainPico
             return [
                 DataEntry(type: .runtime, value: Int(values[1]) as Any),
-                DataEntry(type: .soundLevel, value: Double(values[2]) as Any),
-                DataEntry(type: .waterLevel, value: Int(values[3]) as Any),
-                DataEntry(type: .eulerX, value: Double(values[4]) as Any),
-                DataEntry(type: .eulerY, value: Double(values[5]) as Any),
-                DataEntry(type: .eulerZ, value: Double(values[6]) as Any),
-                DataEntry(type: .rotationalChange, value: Double(values[7]) as Any)
+                DataEntry(type: .realTimeClock, value: String(values[2]) as Any),
+                DataEntry(type: .batteryVoltage, value: Double(values[3]) as Any),
+                DataEntry(type: .temperature1, value: Double(values[4]) as Any),
+                DataEntry(type: .temperature2, value: Double(values[5]) as Any),
+            ]
+        } else if values[0] == "WAKE" {
+            deviceType = .wakePico
+            return [
+                DataEntry(type: .runtime, value: Int(values[1]) as Any),
+                DataEntry(type: .realTimeClock, value: String(values[2]) as Any),
+                DataEntry(type: .soundLevel, value: Double(values[3]) as Any),
+                DataEntry(type: .waterLevel, value: Int(values[4]) as Any),
+                DataEntry(type: .eulerX, value: Double(values[5]) as Any),
+                DataEntry(type: .eulerY, value: Double(values[6]) as Any),
+                DataEntry(type: .eulerZ, value: Double(values[7]) as Any),
+                DataEntry(type: .rotationalChange, value: Double(values[8]) as Any)
             ]
         } else {
+            deviceType = .unknown
             return []
         }
     }
