@@ -196,7 +196,7 @@ try:
         
         sound_reading = round(analog_value.read_u16()*conversion_factor, 2)
         print(analog_value.read_u16())
-        time.sleep(1)
+        time.sleep(0.1)
         #print(sound_reading)
         """
         if sound_reading >= 2.7:
@@ -377,7 +377,8 @@ try:
         rotational_change = abs(sensor.euler[0] - old_rot[0]) + abs(sensor.euler[1] - old_rot[1]) + abs(sensor.euler[2] - old_rot[2]) # Helps visualize if the 9D orientation sensor is working well
         old_rot = sensor.euler
         if ble_sp.is_connected():
-            ble_sp.send(f"WAKE;{main_iterations};{sound_reading};{water_detected};{sensor.euler[0]};{sensor.euler[1]};{sensor.euler[2]};{rotational_change}")
+            ble_date = str(date).replace(";", "~")
+            ble_sp.send(f"WAKE;{main_iterations};{ble_date};{sound_reading};{water_detected};{sensor.euler[0]};{sensor.euler[1]};{sensor.euler[2]};{rotational_change}")
         
         # -- Reboots if it's time or if it missed its reboot while a wave was present -- #
 

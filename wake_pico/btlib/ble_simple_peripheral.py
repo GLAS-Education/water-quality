@@ -17,13 +17,13 @@ _FLAG_WRITE_NO_RESPONSE = const(0x0004)
 _FLAG_WRITE = const(0x0008)
 _FLAG_NOTIFY = const(0x0010)
 
-_UART_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
+_UART_UUID = bluetooth.UUID("854E5F88-24B2-476B-A9D8-82469D83CC4B") # Unique per-device
 _UART_TX = (
-    bluetooth.UUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E"),
+    bluetooth.UUID("C4BD5EA9-A500-450A-B68E-1442C0F77C46"),
     _FLAG_READ | _FLAG_NOTIFY,
 )
 _UART_RX = (
-    bluetooth.UUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E"),
+    bluetooth.UUID("C4BD5EA9-A500-450A-B68E-1442C0F77C46"),
     _FLAG_WRITE | _FLAG_WRITE_NO_RESPONSE,
 )
 _UART_SERVICE = (
@@ -33,7 +33,7 @@ _UART_SERVICE = (
 
 
 class BLESimplePeripheral:
-    def __init__(self, ble, name="mpy_uart"):
+    def __init__(self, ble, name="glaswq2"):
         self._ble = ble
         self._ble.active(True)
         self._ble.irq(self._irq)
