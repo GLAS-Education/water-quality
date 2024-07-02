@@ -266,7 +266,7 @@ struct DataView: View {
                     .chartYAxis {
                         AxisMarks(position: .leading)
                     }
-                    .chartYScale(domain: .automatic(includesZero: true))
+                    .chartYScale(domain: 0...40)
                     .frame(height: 300)
                 }
                 .padding(.horizontal, 29)

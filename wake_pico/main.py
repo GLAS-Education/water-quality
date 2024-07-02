@@ -31,11 +31,12 @@ try:
     wave_detected = False
     microphone_disturbance_list = []
     analog_value = machine.ADC(28)
-    conversion_factor = 3.3/(65535)
+    conversion_factor = 3.3/(4096)
     led = Pin(15, Pin.OUT)
     led.value(1)
     time.sleep(1)
     led.value(0)
+    SOUND_DIVISOR = 13 # TODO: update this value so that the 3.0 threshold makes sense to wake up the 9D sensors (higher = less sensitive)
 
 
     # -- SD Card Stuff -- #
@@ -193,11 +194,19 @@ try:
         
         # -- Reads Microphone -- #
         
+        mic_readings = []
+        for _ in range(50): # collect data for 50ms
+            raw_value = analog_value.read_u16()
+            print(raw_value)
+            std_value = raw_value * conversion_factor
+            mic_readings.append(std_value)
+            time.sleep_ms(1)
+        min_read = min(mic_readings)
+        max_read = max(mic_readings)
+        sound_reading = (max_read - min_read) / SOUND_DIVISOR
+        mic_readings = []
+        print("Collected sound range:", sound_reading)
         
-        sound_reading = round(analog_value.read_u16()*conversion_factor, 2)
-        print(analog_value.read_u16())
-        time.sleep(0.1)
-        #print(sound_reading)
         """
         if sound_reading >= 2.7:
             led.value(1)
@@ -303,7 +312,17 @@ try:
                 
                 
                 
-                sound_reading = round(analog_value.read_u16()*conversion_factor, 2)
+                mic_readings = []
+                for _ in range(50): # collect data for 50ms
+                    raw_value = analog_value.read_u16()
+                    print(raw_value)
+                    std_value = raw_value * conversion_factor
+                    mic_readings.append(std_value)
+                    time.sleep_ms(1)
+                min_read = min(mic_readings)
+                max_read = max(mic_readings)
+                sound_reading = (max_read - min_read) / SOUND_DIVISOR
+                mic_readings = []
                 if len(str(sound_reading)) == 3:
                     file_sound_reading = (str(sound_reading) + "0")    
                 elif len(str(sound_reading)) > 3 :
@@ -319,7 +338,7 @@ try:
                         sound_average = sound_total/len(microphone_disturbance_list)
                     del microphone_disturbance_list [0]
                     
-                print(file_sound_reading, sound_average)
+                # print(file_sound_reading, sound_average)
                     
                     
                 
@@ -344,7 +363,14 @@ try:
                 
                 
                 predict_wave = "true" if (abs(sensor.euler[1]) > 10) or (abs(sensor.euler[2]) > 15) else "false"
-                data.append(f"{predict_wave},{sensor.euler[0]},{sensor.euler[1]},{sensor.euler[2]}")
+                data.append(f"{predict_wave},{water_detected},{sensor.euler[0]},{sensor.euler[1]},{sensor.euler[2]},{sensor.acceleration[0]},{sensor.acceleration[1]},{sensor.acceleration[2]};{sensor.gyro[0]},{sensor.gyro[1]},{sensor.gyro[2]},{sensor.quaternion[0]},{sensor.quaternion[1]},{sensor.quaternion[2]},{sensor.quaternion[3]},{sensor.linear_acceleration[0]},{sensor.linear_acceleration[1]},{sensor.linear_acceleration[2]}")
+                
+                rotational_change = min(abs(sensor.euler[0] - old_rot[0]) + abs(sensor.euler[1] - old_rot[1]) + abs(sensor.euler[2] - old_rot[2]), 40) # Sent over Bluetooth for visualization purposes; can be calculated later for actual analysis from raw sensor data
+                old_rot = sensor.euler
+                if ble_sp.is_connected():
+                    ble_date = str(date).replace(";", "~")
+                    ble_sound = min(sound_reading, 3)
+                    ble_sp.send(f"WAKE;{main_iterations};{ble_date};{ble_sound};{water_detected};{sensor.euler[0]};{sensor.euler[1]};{sensor.euler[2]};{rotational_change}")
                 #if i%5 == 0:
                 
                 
@@ -359,7 +385,7 @@ try:
                     file.write(date + ";" + file_sound_reading + "\n")
                     
                 time.sleep(0.25)
-                wave_timer = wave_timer +0.25
+                wave_timer = wave_timer + 0.25
                 if wave_timer == 300:
                     potential_wave = 0
                     wave_detected = False
@@ -374,11 +400,10 @@ try:
                 
         # -- Send current stats over bluetooth -- #
     
-        rotational_change = abs(sensor.euler[0] - old_rot[0]) + abs(sensor.euler[1] - old_rot[1]) + abs(sensor.euler[2] - old_rot[2]) # Helps visualize if the 9D orientation sensor is working well
-        old_rot = sensor.euler
         if ble_sp.is_connected():
             ble_date = str(date).replace(";", "~")
-            ble_sp.send(f"WAKE;{main_iterations};{ble_date};{sound_reading};{water_detected};{sensor.euler[0]};{sensor.euler[1]};{sensor.euler[2]};{rotational_change}")
+            ble_sound = min(sound_reading, 3)
+            ble_sp.send(f"WAKE;{main_iterations};{ble_date};{ble_sound};{water_detected};0;0;0;0")
         
         # -- Reboots if it's time or if it missed its reboot while a wave was present -- #
 
