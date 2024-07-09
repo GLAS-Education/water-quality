@@ -1,6 +1,6 @@
 import machine, onewire, ds18x20, time, sdcard, uos, ds1307, bluetooth, _thread
 from btlib.ble_simple_peripheral import BLESimplePeripheral
-from machine import Pin, ADC, I2C, RTC
+from machine import Pin, ADC, I2C, RTC, UART
     
 #import libraries for SD card, temp. sensors, voltimeter, and RTC
 #If anything fails, goes to error loop
@@ -50,7 +50,8 @@ try:
     #print(i2c.scan())
 
 
-
+    
+    
     ds = ds1307.DS1307(i2c)
 
 
@@ -68,8 +69,38 @@ try:
     with open("/sd/test7.txt", "a") as file:
                 file.write("Reboot detected" + "\n")
     
-    #Detects reboot
+    # Setup pH sensor
 
+    uart = UART(1, baudrate=9600, tx=Pin(4), rx=Pin(5))
+    uart.init(bits=8, parity=None, stop=1)
+    uart.write(b'*IDN?\n')
+    time.sleep(1)
+    rcv_val = 0
+    
+    # Setup turbidity sensor
+    
+    triggerPin1 = Pin(22, Pin.IN, Pin.PULL_UP)
+    triggerPin2 = Pin(21, Pin.IN, Pin.PULL_UP)
+    pulses_list = []
+    total_list = []
+    pulses_average = 0
+    total = 0
+    count = 0
+    darks = False
+    lights = False
+
+    def TriggerCount(self):
+        global count
+        count += 1
+    def TriggerCount2(self):
+        global count2
+        count2 += 1
+
+    triggerPin1.irq(trigger=Pin.IRQ_RISING, handler=TriggerCount)
+    triggerPin2.irq(trigger=Pin.IRQ_RISING, handler=TriggerCount)
+    
+    # Detects reboot
+    
     iterations = 0
     blink_speed = 2
     ds = ds.datetime()
@@ -77,17 +108,14 @@ try:
     rtc = RTC()
     rtc.datetime((ds[0], ds[1], ds[2], ds[3]+1, ds[4], ds[5], ds[6], 0))
     #print(rtc.datetime())
-    
     def update_bluetooth():
         ble_date = date.replace(";", "~")
-        ble_sp.send(f"MAIN;{i};{ble_date};{voltage_dec};{s1};{s2}")
-    
+        ble_sp.send(f"MAIN;{i};{ble_date};{voltage_dec};{s1};{s2};{rcv_val};{turbidity_avg}")
     i = 0
     while True:
         clock = rtc.datetime()
         year = str(clock[0])
         month = str(clock[1])
-        
         #Ensures that every aspect of the time is a constant number of digits
         if len(month) == 1:
             month = "0"+month
@@ -114,7 +142,6 @@ try:
 
         ds_sensor.convert_temp()
         
-     
         for rom in roms:
      
             if rom == bytearray(b'(\x99\xb2\x96\xf0\x01<I'):
@@ -123,7 +150,62 @@ try:
                 s2 = round(ds_sensor.read_temp(rom), 2)
         #print(sensor)
         #print(reading)
-            
+        
+        # Reading pH
+        
+        if uart.any():
+            read_val = uart.read()
+            try:            
+                rcv_val = float(read_val)
+            except ValueError as e:
+                print(read_val)
+                
+        # Reading turbidity
+        
+        count = 0
+        iterations = 0
+        darks_total = 0
+        lights_total = 0
+        darks_list = []
+        lights_list = []
+
+
+        counted = count
+        #print("{} pulses".format(count))
+
+        
+        
+        #Darks
+        while darks == False:
+            count = 0
+            time.sleep(.1)
+            led.value(0)
+            darks_list.append(count)
+            iterations += 1
+            if iterations == 5:
+                darks = True
+                for i in range(0, len(darks_list)):
+                    darks_total += darks_list[i]
+                darks_average = round(darks_total/len(darks_list))
+
+                
+        while lights == False:
+            count = 0
+            time.sleep(.1)
+            led.value(1)
+            lights_list.append(count)
+            iterations += 1
+            if iterations == 10:
+                lights = True
+                for i in range(0, len(lights_list)):
+                    lights_total += lights_list[i]
+                lights_average = round(lights_total/len(lights_list))
+        turbidity_range = lights_average - darks_average
+        turbidity_avg = (lights_average + darks_average) / 2
+        
+        lights = False
+        darks = False
+                
         
         iterations += 1
         #Boot sequence
@@ -136,23 +218,17 @@ try:
             time.sleep(blink_speed)
             led.value(0)
             time.sleep(blink_speed)
-            
             if ble_sp.is_connected():
                 update_bluetooth()
-        
-        with open("/sd/test5.txt", "a") as file:
-            file.write(date + ";" + str(s1) + ";" + str(s2) + ";" + str(voltage) + "\n")
+        with open("/sd/main2024.txt", "a") as file:
+            file.write(date + ";" + str(s1) + ";" + str(s2) + ";" + str(voltage) + ";" + str(rcv_val) + ";" + str(turbidity_avg) + "\n")
         """
         with open("/sd/test5.txt", "r") as file:
             data = file.read()
             #print(data)
         """
         
-        
         #Waits to record data again and if the time criteria is met it will reboot
-        
-        # TODO: UNCOMMENT!!!
-        """
         if iterations < 20:
             time.sleep(1)
         if iterations >=20:
@@ -185,8 +261,7 @@ try:
                 for _ in range(150):
                     if ble_sp.is_connected():
                         update_bluetooth()
-                    time.sleep(1)"""
-        
+                    time.sleep(1)
         if ble_sp.is_connected():
             update_bluetooth()
         i += 1
@@ -214,3 +289,4 @@ except Exception as e:
 
         machine.reset()
         
+
