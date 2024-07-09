@@ -23,6 +23,8 @@ struct DataView: View {
     @State private var rotationalChangeData: [DataEntry] = []
     @State private var temperature1Data: [DataEntry] = []
     @State private var temperature2Data: [DataEntry] = []
+    @State private var phData: [DataEntry] = []
+    @State private var turbidityData: [DataEntry] = []
     @State private var scene: SCNScene?
     
     var body: some View {
@@ -122,6 +124,56 @@ struct DataView: View {
                     }
                     Chart {
                         ForEach(Array(temperature2Data.enumerated()), id: \.0.self) { (idx, entry) in
+                            LineMark(
+                                x: .value("ID", entry.key as! Int),
+                                y: .value("Value", entry.value as! Double)
+                            )
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading)
+                    }
+                    .chartXScale(domain: .automatic(includesZero: false))
+                    .chartYScale(domain: .automatic(includesZero: false))
+                    .frame(height: 300)
+                }
+                .padding(.horizontal, 29)
+                .padding(.bottom)
+                
+                VStack {
+                    HStack {
+                        Text("pH Sensor")
+                            .font(.title2)
+                            .monospaced()
+                        Spacer()
+                    }
+                    Chart {
+                        ForEach(Array(phData.enumerated()), id: \.0.self) { (idx, entry) in
+                            LineMark(
+                                x: .value("ID", entry.key as! Int),
+                                y: .value("Value", entry.value as! Double)
+                            )
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading)
+                    }
+                    .chartXScale(domain: .automatic(includesZero: false))
+                    .chartYScale(domain: 5...9)
+                    .frame(height: 300)
+                }
+                .padding(.horizontal, 29)
+                .padding(.bottom)
+                
+                VStack {
+                    HStack {
+                        Text("Turbidity Sensor")
+                            .font(.title2)
+                            .monospaced()
+                        Spacer()
+                    }
+                    Chart {
+                        ForEach(Array(turbidityData.enumerated()), id: \.0.self) { (idx, entry) in
                             LineMark(
                                 x: .value("ID", entry.key as! Int),
                                 y: .value("Value", entry.value as! Double)

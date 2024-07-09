@@ -32,6 +32,8 @@ enum DataType {
     case rotationalChange
     case temperature1
     case temperature2
+    case pH
+    case turbidity
 }
 
 struct DataEntry {
@@ -186,6 +188,8 @@ class BluetoothManager: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate
                 DataEntry(type: .batteryVoltage, value: Double(values[3]) as Any),
                 DataEntry(type: .temperature1, value: Double(values[4]) as Any),
                 DataEntry(type: .temperature2, value: Double(values[5]) as Any),
+                DataEntry(type: .pH, value: Double(values[6]) as Any),
+                DataEntry(type: .turbidity, value: Double(values[7]) as Any),
             ]
         } else if values[0] == "WAKE" {
             deviceType = .wakePico
