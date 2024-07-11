@@ -71,7 +71,7 @@ try:
     
     # Setup pH sensor
 
-    uart = UART(1, baudrate=9600, tx=Pin(4), rx=Pin(5))
+    uart = UART(1, baudrate=9600, tx=Pin(8), rx=Pin(9))
     uart.init(bits=8, parity=None, stop=1)
     uart.write(b'*IDN?\n')
     time.sleep(1)
