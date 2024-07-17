@@ -66,6 +66,8 @@ try:
     #Reads the RTC
     print("here")
     print('Found DS devices: ', roms)
+    
+    print("PAST")
 
     #with open("/sd/temp.txt", "w") as file:
     #            file.write("")
@@ -82,6 +84,8 @@ try:
     uart.write(b'*IDN?\n')
     time.sleep(1)
     rcv_val = 0
+    
+    print("ph setup")
     
     # Setup turbidity sensor
     
@@ -101,9 +105,13 @@ try:
     def TriggerCount2(self):
         global count2
         count2 += 1
+    
+    print("setting up turbidity...")
 
     triggerPin1.irq(trigger=Pin.IRQ_RISING, handler=TriggerCount)
     triggerPin2.irq(trigger=Pin.IRQ_RISING, handler=TriggerCount)
+    
+    print("turbidity setup")
     
     # Detects reboot
     
@@ -156,6 +164,8 @@ try:
                 s1 = round(ds_sensor.read_temp(rom), 2)
             elif rom == bytearray(b'(/\xbcI\xf6\xcf<|'):
                 s2 = round(ds_sensor.read_temp(rom), 2)
+                
+        print("temp")
         #print(sensor)
         #print(reading)
         
@@ -167,7 +177,9 @@ try:
                 rcv_val = float(read_val)
             except ValueError as e:
                 print(read_val)
-                
+        
+        print("ph")
+        
         # Reading turbidity
         
         count = 0
@@ -214,6 +226,8 @@ try:
         lights = False
         darks = False
                 
+                
+        print("turbidity")
         
         iterations += 1
         #Boot sequence
@@ -239,6 +253,7 @@ _avg
         
         #Waits to record data again and if the time criteria is met it will reboot
         i += 1
+        print("!!!")
         if iterations < 20:
             time.sleep(1)
         if iterations >=20:
