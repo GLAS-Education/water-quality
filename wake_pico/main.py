@@ -12,8 +12,8 @@ try:
     
     # Setup bluetooth & open for connections
     
-    #ble = bluetooth.BLE()
-    #ble_sp = BLESimplePeripheral(ble)
+    ble = bluetooth.BLE()
+    ble_sp = BLESimplePeripheral(ble)
     
     # Assign chip select (CS) pin (and start it high)
     cs = machine.Pin(1, machine.Pin.OUT)
@@ -241,8 +241,8 @@ _avg
             time.sleep(1)
         if iterations >=20:
             if voltage >= 4.10:
-                if clock[4] == 12:
-                    if clock[5] >= 00 and clock[5] <= 01:
+                if hour == 23:
+                    if clock[5] >= 50 and clock[5] <= 52:
                         time.sleep(60)
                         with open("/sd/test7.txt", "a") as file:
                             file.write(date + ";" + "\n" + "Scheduled Reboot..." + "\n")
@@ -253,8 +253,8 @@ _avg
                         update_bluetooth(60 - remaining)
                     time.sleep(1)
             if voltage < 4.10 and voltage > 4.00:
-                if hour == 12:
-                    if clock[5] >= 00 and clock[5] <= 02:
+                if hour == 23:
+                    if clock[5] >= 50 and clock[5] <= 52:
                         time.sleep(90)
                         with open("/sd/test7.txt", "a") as file:
                             file.write(date + ";" + "\n" + "Scheduled Reboot..." + "\n")
