@@ -2,7 +2,7 @@ import machine, onewire, ds18x20, time, sdcard, uos, ds1307, board, busio, adafr
 from btlib.ble_simple_peripheral import BLESimplePeripheral
 from machine import Pin, ADC, I2C, RTC
 
-print("Wake Pico")
+print("Main Pico")
 try:
     
     main_iterations = 0
@@ -288,7 +288,7 @@ try:
             while wave_timer != 300:
             
                 
-                clock = rtc.datetime()
+                clock = time.localtime() # Prev: rtc.datetime()
                 year = str(clock[0])
                 month = str(clock[1])
                 
@@ -395,7 +395,7 @@ try:
                 # -- Checks to see if a scheduled reboot was scheduled while a wave was present -- #
                 
                 
-                if clock[4] == 12 and clock[5] == 00 and clock[6] >= 00 and clock[6] <= 10:
+                if clock[3] == 23 and clock[4] == 55 and clock[5] >= 00 and clock[5] <= 10:
                     missed_scheduled_reboot = True
 
                 
@@ -409,7 +409,7 @@ try:
         # -- Reboots if it's time or if it missed its reboot while a wave was present -- #
 
             
-        if clock[4] == 12 and clock[5] == 00 and clock[6] >= 00 and clock[6] <= 10 and voltage >= 4.00:
+        if clock[3] == 23 and clock[4] == 55 and clock[5] >= 00 and clock[5] <= 10 and voltage >= 4.00:
                 with open("/sd/sound.txt", "a") as file:
                     file.write(date + ";" + "\n" + "Scheduled Reboot..." + "\n")
                 machine.reset()
