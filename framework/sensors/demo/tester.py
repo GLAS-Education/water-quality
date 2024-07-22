@@ -20,6 +20,3 @@ class TesterSensor(Sensor):
         except Exception as err:
             return err
 
-
-sensor = TesterSensor()
-
