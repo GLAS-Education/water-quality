@@ -51,7 +51,8 @@ class Probe:
             value = sensor.read()
             if not isinstance(value, Exception):
                 # Succeeded
-                data[sensor.id] = value
+                if value != None:
+                    data[sensor.id] = value
             else:
                 # Errored
                 print(f"{LogFormat.Foreground.RED}X {LogFormat.RESET}Sensor {LogFormat.Foreground.LIGHT_GREY}{sensor.id}{LogFormat.RESET} has errored during initialization:")
