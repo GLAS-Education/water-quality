@@ -195,7 +195,7 @@ try:
         
         # -- Reads Microphone -- #
         
-        mic_readings = []
+        """mic_readings = []
         for _ in range(50): # collect data for 50ms
             raw_value = analog_value.read_u16()
             print(raw_value)
@@ -206,7 +206,7 @@ try:
         max_read = max(mic_readings)
         sound_reading = (max_read - min_read) / SOUND_DIVISOR
         mic_readings = []
-        #print("Collected sound range:", sound_reading)
+        #print("Collected sound range:", sound_reading)"""
         
         """
         if sound_reading >= 2.7:
@@ -220,37 +220,37 @@ try:
         # -- Makes Sound Reading into a String -- #
         
         
-        if len(str(sound_reading)) == 3:
+        """if len(str(sound_reading)) == 3:
             file_sound_reading = (str(sound_reading) + "0")    
         elif len(str(sound_reading)) > 3 :
-            file_sound_reading = str(sound_reading)
+            file_sound_reading = str(sound_reading)"""
         
         
         
         # -- Sets average sound reading for a 100 second window -- #
         
         
-        sound_total = 0
+        """sound_total = 0
         microphone_disturbance_list.append(sound_reading)
         if len(microphone_disturbance_list) >= 101:
             for i in range(0, len(microphone_disturbance_list)):
                 sound_total = sound_total + microphone_disturbance_list[i]
                 sound_average = sound_total/len(microphone_disturbance_list)
-            del microphone_disturbance_list [0]
+            del microphone_disturbance_list [0]"""
         
         
         
         # -- Detects waves via a disturbance in the previously set sound average -- #
         
         
-        if sound_reading > sound_average + 0.01 and len(microphone_disturbance_list) >= 100:
+        """if sound_reading > sound_average + 0.01 and len(microphone_disturbance_list) >= 100:
             potential_wave = potential_wave + 1
             if potential_wave == 10:
                 wave_detected = True
                 potential_wave = 0
         if sound_reading <= sound_average + 0.01:
             potential_wave = 0
-            wave_detected = False
+            wave_detected = False"""
             
         #print("Sound:", file_sound_reading, sound_reading, sound_average)
         
@@ -262,10 +262,10 @@ try:
         # -- If no wave is detected it will write to the sound file -- #
         
         
-        if sound_reading < 2.2 or wave_detected == False:
+        """if sound_reading < 2.2 or wave_detected == False:
         
             with open("/sd/sound.txt", "a") as file:
-                file.write(date + ";" + file_sound_reading + "\n")
+                file.write(date + ";" + file_sound_reading + "\n")"""
            
            
         
@@ -279,132 +279,132 @@ try:
         # -- If the sound hits a certain level or if a wave was previously detected with a disturbance in the average -- #
         
         
-        if sound_reading >= 3 or wave_detected == True:
+        #if sound_reading >= 3 or wave_detected == True:
             
             
             # -- Iterates every quater second through detecting the wave for 300 total seconds (five minutes) and repeats almost all code from main loop -- # 
             
             
-            while wave_timer != 300:
+            #while wave_timer != 300:
             
                 
-                clock = time.localtime() # Prev: rtc.datetime()
-                year = str(clock[0])
-                month = str(clock[1])
-                
-                #Ensures that every aspect of the time is a constant number of digits
-                if len(month) == 1:
-                    month = "0"+month
-                day = str(clock[2])
-                if len(day) == 1:
-                    day = "0"+day
-                hour = str(clock[4])
-                if len(hour) == 1:
-                    hour = "0"+hour
-                minute = str(clock[5])
-                if len(minute) == 1:
-                    minute = "0"+minute
-                second = str(clock[6])
-                if len(second) == 1:
-                    second = "0"+second
-                
-                date = (year + "-" + month + "-" + day + ";" + hour + ":" + minute + ":" + second)
-                
-                
-                
-                
-                mic_readings = []
-                for _ in range(50): # collect data for 50ms
-                    raw_value = analog_value.read_u16()
-                    print(raw_value)
-                    std_value = raw_value * conversion_factor
-                    mic_readings.append(std_value)
-                    time.sleep_ms(1)
-                min_read = min(mic_readings)
-                max_read = max(mic_readings)
-                sound_reading = (max_read - min_read) / SOUND_DIVISOR
-                mic_readings = []
-                if len(str(sound_reading)) == 3:
-                    file_sound_reading = (str(sound_reading) + "0")    
-                elif len(str(sound_reading)) > 3 :
-                    file_sound_reading = str(sound_reading)
-                    
-                    
-                    
-                sound_total = 0
-                microphone_disturbance_list.append(sound_reading)
-                if len(microphone_disturbance_list) >= 101:
-                    for i in range(0, len(microphone_disturbance_list)):
-                        sound_total = sound_total + microphone_disturbance_list[i]
-                        sound_average = sound_total/len(microphone_disturbance_list)
-                    del microphone_disturbance_list [0]
-                    
-                # print(file_sound_reading, sound_average)
-                    
-                    
-                
-                # -- Reads 9-Axis Sensor -- #
-                
-                
-                #print("Temperature: {} degrees C".format(sensor.temperature))
-                #print("Accelerometer (m/s^2): {}".format(sensor.acceleration))
-                #print("Magnetometer (microteslas): {}".format(sensor.magnetic))
-                #print("Gyroscope (rad/sec): {}".format(sensor.gyro))
-                #print("Euler angle: {}".format(sensor.euler))
-                #print("Quaternion: {}".format(sensor.quaternion))
-                #print("Linear acceleration (m/s^2): {}".format(sensor.linear_acceleration))
-                #print("Gravity (m/s^2): {}".format(sensor.gravity))
-                #print("Magnetometer (microteslas): {}".format(sensor.magnetic))
-                #print()
-                #global i
-                #i += 1
-                
-                
-                # -- Predicts if a wave is present -- #
-                
-                
-                predict_wave = "true" if (abs(sensor.euler[1]) > 10) or (abs(sensor.euler[2]) > 15) else "false"
-                data.append(f"{predict_wave},{water_detected},{sensor.euler[0]},{sensor.euler[1]},{sensor.euler[2]},{sensor.acceleration[0]},{sensor.acceleration[1]},{sensor.acceleration[2]};{sensor.gyro[0]},{sensor.gyro[1]},{sensor.gyro[2]},{sensor.quaternion[0]},{sensor.quaternion[1]},{sensor.quaternion[2]},{sensor.quaternion[3]},{sensor.linear_acceleration[0]},{sensor.linear_acceleration[1]},{sensor.linear_acceleration[2]}")
-                
-                rotational_change = min(abs(sensor.euler[0] - old_rot[0]) + abs(sensor.euler[1] - old_rot[1]) + abs(sensor.euler[2] - old_rot[2]), 40) # Sent over Bluetooth for visualization purposes; can be calculated later for actual analysis from raw sensor data
-                old_rot = sensor.euler
-                if ble_sp.is_connected():
-                    ble_date = str(date).replace(";", "~")
-                    ble_sound = min(sound_reading, 3)
-                    ble_sp.send(f"WAKE;{main_iterations};{ble_date};{ble_sound};{water_detected};{sensor.euler[0]};{sensor.euler[1]};{sensor.euler[2]};{rotational_change}")
-                #if i%5 == 0:
-                
-                
-                # -- Writes wave data + sound to a wave file and continues to write sound to the sound file -- #
-                
-                
-                with open("/sd/wave.txt", "a") as f:
-                    f.write(date + ";" + file_sound_reading + ";" + f"{'\n'.join(data)}\n")
-                    data = []
-                    f.close()
-                with open("/sd/sound.txt", "a") as file:
-                    file.write(date + ";" + file_sound_reading + "\n")
-                    
-                time.sleep(0.25)
-                wave_timer = wave_timer + 0.25
-                if wave_timer == 300:
-                    potential_wave = 0
-                    wave_detected = False
-                
-                
-                # -- Checks to see if a scheduled reboot was scheduled while a wave was present -- #
-                
-                
-                if clock[3] == 23 and clock[4] == 55 and clock[5] >= 00 and clock[5] <= 10:
-                    missed_scheduled_reboot = True
+        clock = time.localtime() # Prev: rtc.datetime()
+        year = str(clock[0])
+        month = str(clock[1])
+        
+        #Ensures that every aspect of the time is a constant number of digits
+        if len(month) == 1:
+            month = "0"+month
+        day = str(clock[2])
+        if len(day) == 1:
+            day = "0"+day
+        hour = str(clock[4])
+        if len(hour) == 1:
+            hour = "0"+hour
+        minute = str(clock[5])
+        if len(minute) == 1:
+            minute = "0"+minute
+        second = str(clock[6])
+        if len(second) == 1:
+            second = "0"+second
+        
+        date = (year + "-" + month + "-" + day + ";" + hour + ":" + minute + ":" + second)
+        
+        
+        
+        
+        """mic_readings = []
+        for _ in range(50): # collect data for 50ms
+            raw_value = analog_value.read_u16()
+            print(raw_value)
+            std_value = raw_value * conversion_factor
+            mic_readings.append(std_value)
+            time.sleep_ms(1)
+        min_read = min(mic_readings)
+        max_read = max(mic_readings)
+        sound_reading = (max_read - min_read) / SOUND_DIVISOR
+        mic_readings = []
+        if len(str(sound_reading)) == 3:
+            file_sound_reading = (str(sound_reading) + "0")    
+        elif len(str(sound_reading)) > 3 :
+            file_sound_reading = str(sound_reading)
+            
+            
+            
+        sound_total = 0
+        microphone_disturbance_list.append(sound_reading)
+        if len(microphone_disturbance_list) >= 101:
+            for i in range(0, len(microphone_disturbance_list)):
+                sound_total = sound_total + microphone_disturbance_list[i]
+                sound_average = sound_total/len(microphone_disturbance_list)
+            del microphone_disturbance_list [0]"""
+            
+        # print(file_sound_reading, sound_average)
+            
+            
+        
+        # -- Reads 9-Axis Sensor -- #
+        
+        
+        #print("Temperature: {} degrees C".format(sensor.temperature))
+        #print("Accelerometer (m/s^2): {}".format(sensor.acceleration))
+        #print("Magnetometer (microteslas): {}".format(sensor.magnetic))
+        #print("Gyroscope (rad/sec): {}".format(sensor.gyro))
+        #print("Euler angle: {}".format(sensor.euler))
+        #print("Quaternion: {}".format(sensor.quaternion))
+        #print("Linear acceleration (m/s^2): {}".format(sensor.linear_acceleration))
+        #print("Gravity (m/s^2): {}".format(sensor.gravity))
+        #print("Magnetometer (microteslas): {}".format(sensor.magnetic))
+        #print()
+        #global i
+        #i += 1
+        
+        
+        # -- Predicts if a wave is present -- #
+        
+        
+        predict_wave = "true" if (abs(sensor.euler[1]) > 10) or (abs(sensor.euler[2]) > 15) else "false"
+        data.append(f"{predict_wave},{water_detected},{sensor.euler[0]},{sensor.euler[1]},{sensor.euler[2]},{sensor.acceleration[0]},{sensor.acceleration[1]},{sensor.acceleration[2]};{sensor.gyro[0]},{sensor.gyro[1]},{sensor.gyro[2]},{sensor.quaternion[0]},{sensor.quaternion[1]},{sensor.quaternion[2]},{sensor.quaternion[3]},{sensor.linear_acceleration[0]},{sensor.linear_acceleration[1]},{sensor.linear_acceleration[2]}")
+        
+        rotational_change = min(abs(sensor.euler[0] - old_rot[0]) + abs(sensor.euler[1] - old_rot[1]) + abs(sensor.euler[2] - old_rot[2]), 40) # Sent over Bluetooth for visualization purposes; can be calculated later for actual analysis from raw sensor data
+        old_rot = sensor.euler
+        if ble_sp.is_connected():
+            ble_date = str(date).replace(";", "~")
+            #ble_sound = min(sound_reading, 3)
+            ble_sp.send(f"WAKE;{main_iterations};{ble_date};{-1};{water_detected};{sensor.euler[0]};{sensor.euler[1]};{sensor.euler[2]};{rotational_change}")
+        #if i%5 == 0:
+        
+        
+        # -- Writes wave data + sound to a wave file and continues to write sound to the sound file -- #
+        
+        
+        with open("/sd/wave.txt", "a") as f:
+            f.write(date + ";" + "-1" + ";" + f"{'\n'.join(data)}\n")
+            data = []
+            f.close()
+        with open("/sd/sound.txt", "a") as file:
+            file.write(date + ";" + "-1" + "\n")
+            
+        time.sleep(0.25)
+        wave_timer = wave_timer + 0.25
+        if wave_timer == 300:
+            potential_wave = 0
+            wave_detected = False
+        
+        
+        # -- Checks to see if a scheduled reboot was scheduled while a wave was present -- #
+        
+        
+        if clock[3] == 23 and clock[4] == 55 and clock[5] >= 00 and clock[5] <= 10:
+            missed_scheduled_reboot = True
 
                 
         # -- Send current stats over bluetooth -- #
     
         if ble_sp.is_connected():
             ble_date = str(date).replace(";", "~")
-            ble_sound = min(sound_reading, 3)
-            ble_sp.send(f"WAKE;{main_iterations};{ble_date};{ble_sound};{water_detected};0;0;0;0")
+            #ble_sound = min(sound_reading, 3)
+            ble_sp.send(f"WAKE;{main_iterations};{ble_date};{-1};{water_detected};0;0;0;0")
         
         # -- Reboots if it's time or if it missed its reboot while a wave was present -- #
 
