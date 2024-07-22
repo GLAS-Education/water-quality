@@ -14,8 +14,8 @@ try:
     
     # Setup bluetooth & open for connections
     
-    ble = bluetooth.BLE()
-    ble_sp = BLESimplePeripheral(ble)
+    #ble = bluetooth.BLE()
+    #ble_sp = BLESimplePeripheral(ble)
     
     # Assign chip select (CS) pin (and start it high)
     cs = machine.Pin(1, machine.Pin.OUT)
@@ -75,22 +75,19 @@ try:
     time.sleep(1)
 
     with open("/sd/test7.txt", "a") as file:
-                file.write("Reboot detected" + "\n")
-    
-    # Setup pH sensor
-
+        file.write("Reboot detected" + "\n")
     uart = UART(1, baudrate=9600, tx=Pin(8), rx=Pin(9))
     uart.init(bits=8, parity=None, stop=1)
     uart.write(b'*IDN?\n')
     time.sleep(1)
     rcv_val = 0
     
-    print("ph setup")
     
-    # Setup turbidity sensor
-    
+    print("a")
     triggerPin1 = Pin(22, Pin.IN, Pin.PULL_UP)
+    print("b")
     triggerPin2 = Pin(21, Pin.IN, Pin.PULL_UP)
+    print("c")
     pulses_list = []
     total_list = []
     pulses_average = 0
@@ -313,4 +310,3 @@ except Exception as e:
 
         machine.reset()
         
-
