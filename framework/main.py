@@ -27,6 +27,8 @@ class Probe:
         print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}SD_CARD{LogFormat.RESET} has been initialized!")
 
         self.init()
+        print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Data intake loop task is scheduled to start!")
+        time.sleep(5)
         while True:
             data = self.read_loop()
             self.save_data(data)
@@ -43,7 +45,6 @@ class Probe:
                 # Errored
                 print(f"{LogFormat.Foreground.RED}X {LogFormat.RESET}Sensor {LogFormat.Foreground.LIGHT_GREY}{sensor.id}{LogFormat.RESET} has errored during initialization:")
                 print(result)
-        print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Data intake loop task has started!")
 
     def read_loop(self):
         data = {}
