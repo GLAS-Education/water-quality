@@ -42,7 +42,7 @@ class Probe:
         print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}SD_CARD{LogFormat.RESET} has been initialized!")
 
         self.init()
-        print(f"{LogFormat.Foreground.GREEN}↓ {LogFormat.RESET}Data intake loop is about to start...")
+        print(f"{LogFormat.Foreground.ORANGE}↓ {LogFormat.RESET}Data intake loop is about to start...")
         time.sleep(5)
         while True:
             data = self.read_loop()
