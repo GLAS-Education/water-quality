@@ -70,7 +70,9 @@ class Probe:
                         check_scheduled_reboot()
                         time.sleep(1)
             else:
-                time.sleep(10)
+                for i in range(10):
+                   self.save_data(data, 10 - i)
+                   time.sleep(1)
 
     def init(self):
         time.sleep(10)
