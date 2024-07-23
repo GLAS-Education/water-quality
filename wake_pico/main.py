@@ -80,7 +80,8 @@ class Probe:
             sorted_sensors[self.sensor_order.index(key)] = value
         
         for sensor in sorted_sensors:
-            value = sensor.read()
+            if not force_error:
+                value = sensor.read()
             if not force_error and not isinstance(value, Exception):
                 # Succeeded
                 if value != IntentionalUndefined:
@@ -89,7 +90,7 @@ class Probe:
                 # [Custom]: Hydrophone activation reliance
                 if isinstance(sensor, Hydrophone):
                     # Don't read other sensors if it's been >600 seconds since the last loud noise
-                    if not sensor.last_loud or time.mktime(time.localtime()) - sensor.last_loud > 600:
+                    if not sensor.last_loud or time.mktime(time.localtime()) - sensor.last_loud > 300:
                         force_error = True
             else:
                 # Errored
