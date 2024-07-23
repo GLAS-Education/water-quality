@@ -20,6 +20,7 @@ class Temperature(Sensor):
     
     def read(self):
         try:
+            self.sensor.convert_temp()
             for rom in self.roms:
                 if rom == bytearray(b'(\x99\xb2\x96\xf0\x01<I'):
                     temp1 = round(self.sensor.read_temp(rom), 2)
