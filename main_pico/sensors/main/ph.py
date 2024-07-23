@@ -10,7 +10,7 @@ class pH(Sensor):
         try:
             self.uart = machine.UART(1, baudrate=9600, tx=machine.Pin(8), rx=machine.Pin(9))
             self.uart.init(bits=8, parity=None, stop=1)
-            self.uart.write(b"*IDN?\n")
+            # self.uart.write(b"*IDN?\n")
             return True
         except Exception as err:
             return err
@@ -18,7 +18,7 @@ class pH(Sensor):
     def read(self):
         try:
             if self.uart.any():
-                return self.uart.read().split("\r")[0]
+                return str(self.uart.read()).split("\\r")[-2].replace("b'", "")
             else:
                 return IntentionalNull
         except Exception as err:

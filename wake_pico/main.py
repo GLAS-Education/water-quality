@@ -46,6 +46,17 @@ class Probe:
         time.sleep(5)
         while True:
             data = self.read_loop()
+            
+            def check_scheduled_reboot():
+                if time.localtime()[3] == 23 and time.localtime()[4] == 54 and time.localtime()[5] >= 45 and time.localtime()[5] <= 59:
+                    print(LogFormat.Foreground.RED + "About to perform scheduled reboot...")
+                    self.save_data(data, True)
+                    machine.reset()
+            
+            if self.iterations >= 20:
+                # Scheduled reboot
+                check_scheduled_reboot()
+            
             self.save_data(data)
             time.sleep(self.delay)
 
@@ -92,10 +103,12 @@ class Probe:
         self.iterations += 1
         return data
 
-    def save_data(self, data):
+    def save_data(self, data, scheduled_reboot = False):
         cur_time = time.localtime()
 
         # Save to SD card
+        if scheduled_reboot:
+            data["_SCHEDULED_REBOOT"] = scheduled_reboot
         with open("/sd/data.txt", "a") as file:
             file.write(f"{cur_time}: {data}\n")
 
@@ -115,6 +128,7 @@ class Probe:
             self.ble_sp.send(ble_payload)
 
         # Print for debugging
+        data["_ITERATIONS"] = self.iterations
         print()
         print(LogFormat.Foreground.DARK_GREY + "-----------------------------------")
         print(LogFormat.Foreground.LIGHT_GREY + "Time: " + LogFormat.Foreground.LIGHT_GREEN + str(cur_time) + LogFormat.Foreground.DARK_GREY)
