@@ -1,6 +1,7 @@
 # This example demonstrates a UART periperhal.
 
 from btlib.ble_advertising import *
+from structs import LogFormat
 import bluetooth
 import random
 import struct
@@ -42,8 +43,8 @@ class BLESimplePeripheral:
         self._write_callback = None
         self._payload = advertising_payload(name=name, services=[_UART_UUID])
         self._advertise()
-        print("Device Name =", decode_name(self._payload))
-        print("Device ID =", decode_services(self._payload))
+        print(LogFormat.Foreground.DARK_GREY + "  > " + LogFormat.Foreground.LIGHT_GREY + "Device Name: " + LogFormat.Foreground.DARK_GREY + decode_name(self._payload))
+        print(LogFormat.Foreground.DARK_GREY + "  > " + LogFormat.Foreground.LIGHT_GREY + "Device ID: " + LogFormat.Foreground.DARK_GREY + str(decode_services(self._payload)))
 
     def _irq(self, event, data):
         # Track connections so we can send notifications.
@@ -71,7 +72,7 @@ class BLESimplePeripheral:
         return len(self._connections) > 0
 
     def _advertise(self, interval_us=500000):
-        print("Starting advertising")
+        print(LogFormat.Foreground.GREEN + "✓ " + LogFormat.RESET + "Device is now broadcasting BLE!")
         self._ble.gap_advertise(interval_us, adv_data=self._payload)
         
 
