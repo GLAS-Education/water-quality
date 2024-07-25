@@ -16,7 +16,6 @@ IntentionalUndefined = "__UNDEFINED__"
 class Sensor:
     def __init__(self, id):
         self.id = id
-        self.init()
         self.forced_error_value = "-1"
 
     def init(self):
