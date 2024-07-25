@@ -18,7 +18,6 @@ IntentionalUndefined = "__UNDEFINED__"
 class Sensor:
     def __init__(self, id):
         self.id = id
-        self.init()
 
     def init(self):
         pass
