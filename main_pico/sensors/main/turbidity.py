@@ -7,7 +7,7 @@ class Turbidity(Sensor):
         super().__init__(SensorID.turbidity)
         self.trigger_pin1 = machine.Pin(22, machine.Pin.IN, machine.Pin.PULL_UP)
         self.trigger_pin2 = machine.Pin(21, machine.Pin.IN, machine.Pin.PULL_UP)
-        self.led = machine.Pin(18, machine.Pin.OUT) # TODO: Change to the actual pin number!!!
+        self.led = machine.Pin(15, machine.Pin.OUT)
         self.pulses_list = []
         self.total_list = []
         self.pulses_average = 0
