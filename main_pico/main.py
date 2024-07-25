@@ -108,8 +108,10 @@ class Probe:
         cur_time = time.localtime()
 
         # Save to SD card
+        data["_ITERATIONS"] = self.iterations
         if refresh_countdown != 0:
             data["_REFRESH_COUNTDOWN"] = refresh_countdown
+        else:
             with open("/sd/data.txt", "a") as file:
                 file.write(f"{cur_time}: {data}\n")
 
@@ -128,15 +130,15 @@ class Probe:
             self.ble_sp.send(ble_payload)
 
         # Print for debugging
-        data["_ITERATIONS"] = self.iterations
         print()
         print(LogFormat.Foreground.DARK_GREY + "-----------------------------------")
         print(LogFormat.Foreground.LIGHT_GREY + "Time: " + LogFormat.Foreground.LIGHT_GREEN + str(cur_time) + LogFormat.Foreground.DARK_GREY)
         print(LogFormat.Foreground.LIGHT_GREY + "BLE: " + LogFormat.Foreground.LIGHT_BLUE + ("" if self.ble_sp.is_connected() else LogFormat.STRIKETHROUGH) + ble_payload + LogFormat.RESET + LogFormat.Foreground.DARK_GREY)
         print()
-        print(LogFormat.Foreground.DARK_GREY + json.dumps(data).replace("{", "{\n    ").replace("}", "\n}").replace(", ", ", \n    ").replace("\"-1\"", "None").replace("\"-1,1\"", "None").replace("\"-1,-1,-1\"", "None"))
+        print(LogFormat.Foreground.DARK_GREY + json.dumps(data).replace("{", "{\n    ").replace("}", "\n}").replace(", ", ", \n    ").replace("\"-9\"", "Exception").replace("\"-1\"", "None").replace("\"-1,1\"", "None").replace("\"-1,-1,-1\"", "None"))
         print(LogFormat.Foreground.DARK_GREY + "-----------------------------------")
 
 
 if __name__ == "__main__":
     Probe(ProbeID.main)
+
