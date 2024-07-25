@@ -108,6 +108,7 @@ class Probe:
         cur_time = time.localtime()
 
         # Save to SD card
+        data["_ITERATIONS"] = self.iterations
         if refresh_countdown != 0:
             data["_REFRESH_COUNTDOWN"] = refresh_countdown
         else:
@@ -129,7 +130,6 @@ class Probe:
             self.ble_sp.send(ble_payload)
 
         # Print for debugging
-        data["_ITERATIONS"] = self.iterations
         print()
         print(LogFormat.Foreground.DARK_GREY + "-----------------------------------")
         print(LogFormat.Foreground.LIGHT_GREY + "Time: " + LogFormat.Foreground.LIGHT_GREEN + str(cur_time) + LogFormat.Foreground.DARK_GREY)
