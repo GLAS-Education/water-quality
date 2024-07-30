@@ -1,6 +1,7 @@
 import bluetooth, math, time, json, uos, os, sdcard
 from structs import Sensor, ProbeID, SensorID, LogFormat, IntentionalUndefined
 from btlib.ble_simple_peripheral import BLESimplePeripheral
+from machine import Pin, I2C, RTC
 
 from sensors.main.led import StatusLED
 from sensors.main.voltage import BatteryVoltage
