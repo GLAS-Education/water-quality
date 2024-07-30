@@ -1,11 +1,11 @@
-import bluetooth, math, time, json, uos, os, sdcard
+import bluetooth, math, time, json, uos, os, sdcard, ds1307
 from structs import Sensor, ProbeID, SensorID, LogFormat, IntentionalUndefined
 from btlib.ble_simple_peripheral import BLESimplePeripheral
 
-from sensors.main.led import StatusLED
+# from sensors.main.led import StatusLED
 from sensors.main.voltage import BatteryVoltage
 from sensors.main.temperature import Temperature
-from sensors.main.turbidity import Turbidity
+# from sensors.main.turbidity import Turbidity
 from sensors.main.ph import pH
 
 
@@ -16,15 +16,23 @@ class Probe:
         self.iterations = 0
 
         # Add sensors from probe directory
-        self.sensors[SensorID.status_led] = StatusLED()
+        # self.sensors[SensorID.status_led] = StatusLED()
         self.sensors[SensorID.voltage] = BatteryVoltage()
         self.sensors[SensorID.temperature] = Temperature()
-        self.sensors[SensorID.turbidity] = Turbidity()
+        # self.sensors[SensorID.turbidity] = Turbidity()
         self.sensors[SensorID.ph] = pH()
 
         # Connect to Bluetooth
         ble = bluetooth.BLE()
         self.ble_sp = BLESimplePeripheral(ble)
+        
+        # Setup RTC
+        i2c = I2C(0, scl=Pin(17), sda=Pin(16))
+        ds = ds1307.DS1307(i2c)
+        ds = ds.datetime()
+        self.rtc = RTC()
+        self.rtc.datetime((ds[0], ds[1], ds[2], ds[3]+1, ds[4], ds[5], ds[6], 0))
+        print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}RTC{LogFormat.RESET} has been initialized!")
         
         # Setup SD card
         cs = machine.Pin(1, machine.Pin.OUT)
@@ -44,7 +52,7 @@ class Probe:
             self.save_data(data)
             
             def check_scheduled_reboot():
-                if time.localtime()[3] == 23 and time.localtime()[4] == 54 and time.localtime()[5] >= 45 and time.localtime()[5] <= 59:
+                if self.rtc.datetime()()[3] == 23 and self.rtc.datetime()()[4] == 54 and self.rtc.datetime()()[5] >= 45 and self.rtc.datetime()()[5] <= 59:
                     print(LogFormat.Foreground.RED + "About to perform scheduled reboot...")
                     self.save_data(data, -10) # -10 is code for about to run a scheduled reboot
                     machine.reset()
@@ -105,10 +113,11 @@ class Probe:
         return data
 
     def save_data(self, data, refresh_countdown = 0):
-        cur_time = time.localtime()
+        cur_time = self.rtc.datetime()()
 
         # Save to SD card
         data["_ITERATIONS"] = self.iterations
+        data[SensorID.turbidity] = -5 # TEMP/TODO
         if refresh_countdown != 0:
             data["_REFRESH_COUNTDOWN"] = refresh_countdown
         else:
