@@ -1,6 +1,7 @@
-import bluetooth, math, time, json, uos, os, sdcard
+import bluetooth, math, time, json, uos, os, sdcard, ds1307
 from structs import Sensor, ProbeID, SensorID, LogFormat, IntentionalUndefined
 from btlib.ble_simple_peripheral import BLESimplePeripheral
+from machine import Pin, I2C, RTC
 
 from sensors.wake.led import StatusLED
 from sensors.wake.audio import Hydrophone
@@ -14,9 +15,9 @@ class Probe:
         self.sensors = {}
         self.sensor_order = [
             SensorID.status_led,
-            SensorID.hydrophone,
-            SensorID.absrot,
-            SensorID.water_level
+            SensorID.water_level,
+            # SensorID.hydrophone,
+            SensorID.absrot
         ]
         self.delay = 0.25  # second(s)
         self.iterations = 0
@@ -24,7 +25,7 @@ class Probe:
 
         # Add sensors from probe directory
         self.sensors[SensorID.status_led] = StatusLED()
-        self.sensors[SensorID.hydrophone] = Hydrophone()
+        # self.sensors[SensorID.hydrophone] = Hydrophone()
         self.sensors[SensorID.absrot] = AbsoluteOrientation()
         self.sensors[SensorID.water_level] = WaterLevel()
 
@@ -32,13 +33,20 @@ class Probe:
         ble = bluetooth.BLE()
         self.ble_sp = BLESimplePeripheral(ble)
         
+        # Setup RTC
+        i2c = I2C(0, scl=Pin(17), sda=Pin(16))
+        ds = ds1307.DS1307(i2c)
+        ds = ds.datetime()
+        self.rtc = RTC()
+        self.rtc.datetime((ds[0], ds[1], ds[2], ds[3]+1, ds[4], ds[5], ds[6], 0))
+        print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}RTC{LogFormat.RESET} has been initialized!")
+        
         # Setup SD card
         cs = machine.Pin(1, machine.Pin.OUT)
         spi = machine.SPI(0, baudrate=1000000, polarity=0, phase=0, bits=8, firstbit=machine.SPI.MSB, sck=machine.Pin(2), mosi=machine.Pin(3), miso=machine.Pin(4))
         sd = sdcard.SDCard(spi, cs)
         vfs = uos.VfsFat(sd)
-        uos.mount(vfs, "/sd")
-        
+        uos.mount(vfs, "/sd")        
         print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}SD_CARD{LogFormat.RESET} has been initialized!")
 
         self.init()
@@ -48,7 +56,7 @@ class Probe:
             data = self.read_loop()
             
             def check_scheduled_reboot():
-                if time.localtime()[3] == 23 and time.localtime()[4] == 54 and time.localtime()[5] >= 45 and time.localtime()[5] <= 59:
+                if self.rtc.datetime()[3] == 23 and self.rtc.datetime()[4] == 54 and self.rtc.datetime()[5] >= 45 and self.rtc.datetime()[5] <= 59:
                     print(LogFormat.Foreground.RED + "About to perform scheduled reboot...")
                     self.save_data(data, True)
                     machine.reset()
@@ -80,18 +88,17 @@ class Probe:
             sorted_sensors[self.sensor_order.index(key)] = value
         
         for sensor in sorted_sensors:
-            if not force_error:
-                value = sensor.read()
+            value = sensor.read()
             if not force_error and not isinstance(value, Exception):
                 # Succeeded
                 if value != IntentionalUndefined:
                     data[sensor.id] = value
                     
                 # [Custom]: Hydrophone activation reliance
-                if isinstance(sensor, Hydrophone):
+                # if isinstance(sensor, Hydrophone):
                     # Don't read other sensors if it's been >600 seconds since the last loud noise
-                    if not sensor.last_loud or time.mktime(time.localtime()) - sensor.last_loud > 300:
-                        force_error = True
+                    # if not sensor.last_loud or time.mktime(self.rtc.datetime()) - sensor.last_loud > 600:
+                        # force_error = True
             else:
                 # Errored
                 if force_error:                
@@ -105,9 +112,11 @@ class Probe:
         return data
 
     def save_data(self, data, scheduled_reboot = False):
-        cur_time = time.localtime()
+        cur_time = self.rtc.datetime()
 
         # Save to SD card
+        data[SensorID.hydrophone] = -5 # TEMP/TODO
+        data["_ITERATIONS"] = self.iterations
         if scheduled_reboot:
             data["_SCHEDULED_REBOOT"] = scheduled_reboot
         with open("/sd/data.txt", "a") as file:
@@ -129,7 +138,6 @@ class Probe:
             self.ble_sp.send(ble_payload)
 
         # Print for debugging
-        data["_ITERATIONS"] = self.iterations
         print()
         print(LogFormat.Foreground.DARK_GREY + "-----------------------------------")
         print(LogFormat.Foreground.LIGHT_GREY + "Time: " + LogFormat.Foreground.LIGHT_GREEN + str(cur_time) + LogFormat.Foreground.DARK_GREY)
@@ -141,3 +149,4 @@ class Probe:
 
 if __name__ == "__main__":
     Probe(ProbeID.wake)
+
