@@ -1,6 +1,10 @@
 import machine, time
 from structs import Sensor, SensorID
 
+# failsafe
+import micropython
+micropython.alloc_emergency_exception_buf(100)
+
 
 class Turbidity(Sensor):
     def __init__(self):
@@ -17,13 +21,15 @@ class Turbidity(Sensor):
         self.lights = False
     
     def TriggerCount(self, pin):
-        self.count += 1
+        try:
+            self.count += 1
+        except Exception as err:
+            print(err)
 
     def init(self):
         try:
             self.trigger_pin1.irq(trigger=machine.Pin.IRQ_RISING, handler=self.TriggerCount)
             self.trigger_pin2.irq(trigger=machine.Pin.IRQ_RISING, handler=self.TriggerCount)
-            self.read()
             return True
         except Exception as err:
             return err
@@ -38,6 +44,7 @@ class Turbidity(Sensor):
             lights_list = []
             
             while self.darks == False:
+                print("while 1")
                 self.count = 0
                 time.sleep(.1)
                 self.led.value(0)
@@ -46,11 +53,13 @@ class Turbidity(Sensor):
                 if iterations == 5:
                     self.darks = True
                     for i in range(0, len(darks_list)):
+                        print("while 1.1")
                         darks_total += darks_list[i]
                     darks_average = round(darks_total/len(darks_list))
 
                 
             while self.lights == False:
+                print("while 2")
                 self.count = 0
                 time.sleep(.1)
                 self.led.value(1)
@@ -59,6 +68,7 @@ class Turbidity(Sensor):
                 if iterations == 10:
                     self.lights = True
                     for i in range(0, len(lights_list)):
+                        print("while 2.1")
                         lights_total += lights_list[i]
                     lights_average = round(lights_total/len(lights_list))
                         
@@ -71,6 +81,3 @@ class Turbidity(Sensor):
             return turbidity_avg
         except Exception as err:
             return err
-
-
-
