@@ -1,153 +1,314 @@
-import bluetooth, math, time, json, uos, os, sdcard, ds1307
-from structs import Sensor, ProbeID, SensorID, LogFormat, IntentionalUndefined
-from btlib.ble_simple_peripheral import BLESimplePeripheral
+# This file must be compatible with MicroPython.
 
-# from sensors.main.led import StatusLED
-from sensors.main.voltage import BatteryVoltage
-from sensors.main.temperature import Temperature
-# from sensors.main.turbidity import Turbidity
-from sensors.main.ph import pH
+from logging import log, LogFormat
+import time
+import os
+import sys
 
-
-class Probe:
-    def __init__(self, id):
-        self.id = id
-        self.sensors = {}
-        self.iterations = 0
-
-        # Add sensors from probe directory
-        # self.sensors[SensorID.status_led] = StatusLED()
-        self.sensors[SensorID.voltage] = BatteryVoltage()
-        self.sensors[SensorID.temperature] = Temperature()
-        # self.sensors[SensorID.turbidity] = Turbidity()
-        self.sensors[SensorID.ph] = pH()
-
-        # Connect to Bluetooth
-        ble = bluetooth.BLE()
-        self.ble_sp = BLESimplePeripheral(ble)
-        
-        # Setup RTC
-        i2c = I2C(0, scl=Pin(17), sda=Pin(16))
-        ds = ds1307.DS1307(i2c)
-        ds = ds.datetime()
-        self.rtc = RTC()
-        self.rtc.datetime((ds[0], ds[1], ds[2], ds[3]+1, ds[4], ds[5], ds[6], 0))
-        print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}RTC{LogFormat.RESET} has been initialized!")
-        
-        # Setup SD card
-        cs = machine.Pin(1, machine.Pin.OUT)
-        spi = machine.SPI(0, baudrate=1000000, polarity=0, phase=0, bits=8, firstbit=machine.SPI.MSB, sck=machine.Pin(2), mosi=machine.Pin(3), miso=machine.Pin(4))
-        sd = sdcard.SDCard(spi, cs)
-        vfs = uos.VfsFat(sd)
-        uos.mount(vfs, "/sd")
-        
-        print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}SD_CARD{LogFormat.RESET} has been initialized!")
-
-        self.init()
-        print(f"{LogFormat.Foreground.ORANGE}↓ {LogFormat.RESET}Data intake loop is about to start...")
-        time.sleep(5)
-        
-        while True:
-            data = self.read_loop()
-            self.save_data(data)
+def load_components(directory: str, get_instance=None, with_setup=False):
+    """
+    Unified loader for both modules and helpers
+    
+    Args:
+        directory: Directory to load from ("modules" or "helpers")
+        get_instance: Function to create instance (for modules) or None (for helpers)
+        with_setup: Whether to run two-phase setup with dependencies (for helpers)
+    """
+    components = {}
+    
+    # Phase 1: Load and import all components
+    for file in os.listdir(directory):
+        if file.endswith(".py"):
+            name = file.replace(".py", '')
+            module_path = f"{directory}.{name}"
             
-            def check_scheduled_reboot():
-                if self.rtc.datetime()()[3] == 23 and self.rtc.datetime()()[4] == 54 and self.rtc.datetime()()[5] >= 45 and self.rtc.datetime()()[5] <= 59:
-                    print(LogFormat.Foreground.RED + "About to perform scheduled reboot...")
-                    self.save_data(data, -10) # -10 is code for about to run a scheduled reboot
-                    machine.reset()
-            
-            if self.iterations >= 20:
-                # Scheduled reboot
-                check_scheduled_reboot()
+            try:
+                exec(f"import {module_path}", {})
                 
-                # Custom: sleep time dynamic to voltage    
-                if data[SensorID.voltage] >= 4.10:
-                    for i in range(60):
-                        self.save_data(data, 60 - i)
-                        check_scheduled_reboot()
-                        time.sleep(1)
-                elif data[SensorID.voltage] >= 4.00:
-                    for i in range(90):
-                        self.save_data(data, 90 - i)
-                        check_scheduled_reboot()
-                        time.sleep(1)
+                if get_instance:
+                    # For modules: use provided instance creator
+                    components[name] = get_instance(sys.modules[module_path])
                 else:
-                    for i in range(150):
-                        self.save_data(data, 150 - i)
-                        check_scheduled_reboot()
-                        time.sleep(1)
-            else:
-                for i in range(10):
-                   self.save_data(data, 10 - i)
-                   time.sleep(1)
-
-    def init(self):
-        time.sleep(10)
-        print(f"{LogFormat.Foreground.ORANGE}~ {LogFormat.RESET}Initializing sensors for {LogFormat.Foreground.LIGHT_GREY}{self.id}{LogFormat.RESET} probe...")
-        for sensor in self.sensors.values():
-            result = sensor.init()
-            if result and isinstance(result, bool):
-                # Succeeded
-                print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}{sensor.id}{LogFormat.RESET} has been initialized!")
-            else:
-                # Errored
-                print(f"{LogFormat.Foreground.RED}X {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}{sensor.id}{LogFormat.RESET} has errored during initialization:")
-                print(result)
-
-    def read_loop(self):
-        data = {}        
-        for sensor in list(self.sensors.values()):
-            value = sensor.read()
-            if not isinstance(value, Exception):
-                # Succeeded
-                if value != IntentionalUndefined:
-                    data[sensor.id] = value
-            else:
-                # Errored
-                data[sensor.id] = "-9"
-                print(f"{LogFormat.Foreground.RED}X {LogFormat.RESET}Sensor {LogFormat.Foreground.LIGHT_GREY}{sensor.id}{LogFormat.RESET} has errored during runtime:")
-                print(LogFormat.Foreground.DARK_GREY + "  > " + str(value))
+                    # For helpers: use standard Helper() constructor
+                    components[name] = sys.modules[module_path].Helper()
+                    
+                log(f"Successfully loaded {directory[:-1]} '{name}'", "success", f"~{directory[:-1]}")
+                
+            except Exception as e:
+                error_msg = f"Failed to load {directory[:-1]} '{name}': {str(e)}"
+                log(error_msg, "error", f"~{directory[:-1]}")
+                # For modules, we'll track this as a failed module from the start
+                # For helpers, we skip them entirely if they fail to load
+                if get_instance:
+                    components[name] = None  # Mark as failed but keep in components list
+    
+    # Phase 2: Setup with dependencies (only for helpers)
+    if with_setup:
+        # Setup config first
+        config_helper = None
+        if "config" in components and components["config"] is not None:
+            try:
+                components["config"].setup()
+                config_helper = components["config"]
+            except Exception as e:
+                log(f"Failed to setup config helper: {str(e)}", "error", "~config")
+                components["config"] = None
         
-        self.iterations += 1
-        return data
+        # Setup other helpers, passing config to those that need it
+        for name, helper in components.items():
+            if name == "config" or helper is None:
+                continue  # Already set up or failed to load
+            try:
+                if name == "wifi":
+                    # WiFi needs config for credentials and API key
+                    helper.setup(config_helper)
+                else:
+                    # Other helpers don't need config (yet)
+                    helper.setup()
+            except Exception as e:
+                log(f"Failed to setup {name} helper: {str(e)}", "error", f"~{name}")
+                components[name] = None
+    
+    return components
 
-    def save_data(self, data, refresh_countdown = 0):
-        cur_time = self.rtc.datetime()()
+def reinitialize_module(name: str, module_path: str, get_module):
+    """Attempt to reinitialize a failed module"""
+    try:
+        # Force reload the module
+        if module_path in sys.modules:
+            del sys.modules[module_path]
+        exec(f"import {module_path}", {})
+        new_module = get_module(sys.modules[module_path])
+        log(f"Requested reinitialization of module '{name}'", "success", "~error")
+        return new_module
+    except Exception as e:
+        log(f"Failed to reinitialize module '{name}': {str(e)}", "error", "~error")
+        return None
 
-        # Save to SD card
-        data["_ITERATIONS"] = self.iterations
-        data[SensorID.turbidity] = -5 # TEMP/TODO
-        if refresh_countdown != 0:
-            data["_REFRESH_COUNTDOWN"] = refresh_countdown
+modules = load_components("modules", get_instance=lambda m: m.Module())
+helpers = load_components("helpers", with_setup=True)
+
+# Error tracking for modules
+module_failures = {}  # {module_name: {'count': int, 'last_attempt': float, 'backoff': int}}
+
+# Initialize failure tracking for modules that failed during initial loading
+for name, module in modules.items():
+    if module is None:
+        module_failures[name] = {'count': 1, 'last_attempt': 0, 'backoff': 1}
+        log(f"Module '{name}' marked as failed from initial loading", "warning", f"~{name}")
+
+loop_count = 0
+
+while True:
+    batch = {}
+    start_time = time.time()
+    loop_count += 1
+    
+    # Collect error logs for this loop iteration
+    loop_error_logs = []
+
+    real_time = helpers["time"].get_time()
+    batch["time"] = real_time
+
+    for name, module in modules.items():
+        # Skip modules that failed during initial loading and aren't ready for retry yet
+        if module is None:
+            # Check if it's time to attempt reinitializing this initially failed module
+            if name in module_failures:
+                current_time = time.time()
+                if (loop_count - module_failures[name]['last_attempt']) >= module_failures[name]['backoff']:
+                    reinit_msg = f"Attempting to initialize (attempt {module_failures[name]['count']})"
+                    log(reinit_msg, "info", name)
+                    loop_error_logs.append(f"{helpers['time'].get_time()} - INFO: {reinit_msg}")
+                    
+                    module_path = f"modules.{name}"
+                    new_module = reinitialize_module(name, module_path, lambda m: m.Module())
+                    
+                    if new_module:
+                        modules[name] = new_module
+                        module = new_module  # Continue with reading this module
+                    else:
+                        module_failures[name]['last_attempt'] = loop_count
+                        module_failures[name]['backoff'] = min(module_failures[name]['backoff'] * 2, 10)
+                        batch[name] = None
+                        continue
+                else:
+                    batch[name] = None
+                    continue
+            else:
+                batch[name] = None
+                continue
+        
+        try:
+            data = module.read()
+            batch[name] = data
+            
+            # Reset failure tracking on successful read
+            if name in module_failures:
+                recovery_msg = f"Module recovered after {module_failures[name]['count']} failures"
+                log(recovery_msg, "success", name)
+                loop_error_logs.append(f"{helpers['time'].get_time()} - SUCCESS: {recovery_msg}")
+                del module_failures[name]
+                
+        except Exception as e:
+            error_msg = f"Module failed: {str(e)}"
+            log(error_msg, "error", name)
+            loop_error_logs.append(f"{helpers['time'].get_time()} - ERROR: {error_msg}")
+            
+            # Initialize or update failure tracking
+            if name not in module_failures:
+                module_failures[name] = {'count': 0, 'last_attempt': 0, 'backoff': 1}
+            
+            module_failures[name]['count'] += 1
+            current_time = time.time()
+            
+            # Try to reinitialize with exponential backoff
+            # Only attempt reinitialize every backoff loops, not every failure
+            if (loop_count - module_failures[name]['last_attempt']) >= module_failures[name]['backoff']:
+                reinit_msg = f"Attempting to reinitialize (attempt {module_failures[name]['count']})"
+                log(reinit_msg, "info", name)
+                loop_error_logs.append(f"{helpers['time'].get_time()} - INFO: {reinit_msg}")
+                
+                module_path = f"modules.{name}"
+                new_module = reinitialize_module(name, module_path, lambda m: m.Module())
+                
+                if new_module:
+                    modules[name] = new_module
+                    # Try reading again immediately after successful reinit
+                    try:
+                        data = new_module.read()
+                        batch[name] = data
+                        success_msg = f"Recovered and read successfully"
+                        log(success_msg, "success", name)
+                        loop_error_logs.append(f"{helpers['time'].get_time()} - SUCCESS: {success_msg}")
+                        del module_failures[name]
+                    except Exception as retry_e:
+                        retry_msg = f"Failed again after reinit: {str(retry_e)}"
+                        log(retry_msg, "error", name)
+                        loop_error_logs.append(f"{helpers['time'].get_time()} - WARNING: {retry_msg}")
+                        module_failures[name]['last_attempt'] = loop_count
+                        module_failures[name]['backoff'] = min(module_failures[name]['backoff'] * 2, 10)  # Cap at 10 loops
+                else:
+                    module_failures[name]['last_attempt'] = loop_count
+                    module_failures[name]['backoff'] = min(module_failures[name]['backoff'] * 2, 10)  # Cap at 10 loops
+            
+            # Use default/safe value for failed modules
+            batch[name] = None
+
+    print()
+    log(f"Data retrieved in {time.time() - start_time:.2f}s!", "success")
+    
+    # Display successful reads and failure summary
+    successful_modules = 0
+    for key, value in batch.items():
+        if key == "time":
+            continue
+            
+        if value is not None:
+            pretty_value = modules[key].pretty_print(value)
+            # Find longest key length for alignment
+            max_key_length = max(len(k) for k in batch.keys() if k != "time")
+            padding = " " * (max_key_length - len(key) + 2)
+            # Add extra padding for multi-line values
+            lines = pretty_value.split("\n")
+            formatted_lines = []
+            for i, line in enumerate(lines):
+                if i == 0:
+                    formatted_lines.append(line)
+                else:
+                    formatted_lines.append(" " * (max_key_length + 9) + line)
+            aligned_value = "\n".join(formatted_lines)
+            
+            print(
+                "    " + LogFormat.Foreground.LIGHT_GREY + ">" + LogFormat.RESET + " " +
+                key + ":" + padding + LogFormat.Foreground.DARK_GREY + aligned_value + LogFormat.RESET
+            )
+            successful_modules += 1
         else:
-            with open("/sd/data.txt", "a") as file:
-                file.write(f"{cur_time}: {data}\n")
+            # Use same padding calculation for failed messages
+            max_key_length = max(len(k) for k in batch.keys() if k != "time")
+            padding = " " * (max_key_length - len(key) + 2)
+            print(
+                "    " + LogFormat.Foreground.LIGHT_GREY + ">" + LogFormat.RESET + " " +
+                key + ":" + padding + LogFormat.Foreground.RED + "FAILED" + LogFormat.RESET
+            )
+    
+    # Show failure summary
+    if module_failures:
+        failed_count = len(module_failures)
+        total_modules = len(modules)
+        print(
+            "    " + LogFormat.Foreground.YELLOW + f"⚠ {failed_count}/{total_modules} modules failing" + LogFormat.RESET
+        )
+    
+    print()
 
-        # Send over Bluetooth
-        ble_payload = ";".join([
-            self.id,
-            str(self.iterations),
-            "/".join(list(map(lambda x: str(x), list(cur_time)))),
-            str(data[SensorID.voltage]),
-            data[SensorID.temperature].replace(",", ";"),
-            str(data[SensorID.ph]),
-            str(data[SensorID.turbidity]),
-            str(refresh_countdown)
-        ])
-        if self.ble_sp.is_connected():
-            self.ble_sp.send(ble_payload)
+    # Always save data - failures are valuable information for analysis
+    try:
+        helpers["sd"].save_data(batch)
+        if successful_modules == 0:
+            log("Saved batch with all failed readings for analysis", "info", "~save")
+    except Exception as e:
+        sd_error_msg = f"Failed to save data to SD card: {str(e)}"
+        log(sd_error_msg, "error", "~save")
+        loop_error_logs.append(f"{helpers['time'].get_time()} - ERROR: {sd_error_msg}")
 
-        # Print for debugging
-        print()
-        print(LogFormat.Foreground.DARK_GREY + "-----------------------------------")
-        print(LogFormat.Foreground.LIGHT_GREY + "Time: " + LogFormat.Foreground.LIGHT_GREEN + str(cur_time) + LogFormat.Foreground.DARK_GREY)
-        print(LogFormat.Foreground.LIGHT_GREY + "BLE: " + LogFormat.Foreground.LIGHT_BLUE + ("" if self.ble_sp.is_connected() else LogFormat.STRIKETHROUGH) + ble_payload + LogFormat.RESET + LogFormat.Foreground.DARK_GREY)
-        print()
-        print(LogFormat.Foreground.DARK_GREY + json.dumps(data).replace("{", "{\n    ").replace("}", "\n}").replace(", ", ", \n    ").replace("\"-9\"", "Exception").replace("\"-1\"", "None").replace("\"-1,1\"", "None").replace("\"-1,-1,-1\"", "None"))
-        print(LogFormat.Foreground.DARK_GREY + "-----------------------------------")
+    # Save error logs to SD card (separate from data)
+    if loop_error_logs and "sd" in helpers:
+        try:
+            helpers["sd"].save_logs(loop_error_logs)
+        except Exception as e:
+            # Don't log this failure to avoid recursion, just print
+            print(f"Failed to save error logs: {str(e)}")
 
+    # Upload to server if WiFi is connected
+    if "wifi" in helpers and helpers["wifi"].is_connected():
+        try:
+            success = helpers["wifi"].upload_batch(batch)
+            if success:
+                log("Batch uploaded to server successfully", "success", "~upload")
+            else:
+                upload_error_msg = "Failed to upload batch to server"
+                log(upload_error_msg, "error")
+                loop_error_logs.append(f"{helpers['time'].get_time()} - ERROR: {upload_error_msg}")
+        except Exception as e:
+            wifi_error_msg = f"WiFi upload failed: {str(e)}"
+            log(wifi_error_msg, "error", "~upload")
+            loop_error_logs.append(f"{helpers['time'].get_time()} - ERROR: {wifi_error_msg}")
+    else:
+        log("WiFi not connected - skipping server upload", "info", "~upload")
 
-if __name__ == "__main__":
-    Probe(ProbeID.main)
-
+    # Battery management - handle potential battery module failure
+    try:
+        voltage = batch["battery"]["voltage"] if batch.get("battery") else 3.7  # Default safe voltage
+        
+        # Get sleep times from config
+        sleep_times = helpers["config"].get_sleep_times() if "config" in helpers else {
+            "high": 60, "medium": 90, "low": 150
+        }
+        
+        if voltage >= 4.1:
+            sleep_time = sleep_times["high"]
+            log(f"Battery at {voltage}V - sleeping for {sleep_time}s", "info")
+            time.sleep(sleep_time)
+        elif voltage > 4.0:
+            sleep_time = sleep_times["medium"]
+            log(f"Battery at {voltage}V - sleeping for {sleep_time}s", "info")
+            time.sleep(sleep_time)
+        else:
+            sleep_time = sleep_times["low"]
+            log(f"Battery at {voltage}V - sleeping for {sleep_time}s", "info")
+            time.sleep(sleep_time)
+    except Exception as e:
+        battery_error_msg = f"Battery check failed: {str(e)} - using default sleep"
+        log(battery_error_msg, "error", "Battery")
+        loop_error_logs.append(f"{helpers['time'].get_time()} - ERROR: {battery_error_msg}")
+        default_sleep = helpers["config"].get_sleep_times()["medium"] if "config" in helpers else 90
+        time.sleep(default_sleep)
+    
+    # Final attempt to save any remaining error logs from this iteration
+    if loop_error_logs and "sd" in helpers:
+        try:
+            helpers["sd"].save_logs(loop_error_logs)
+        except Exception as e:
+            print(f"Failed to save final error logs: {str(e)}")
