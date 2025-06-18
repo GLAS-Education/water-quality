@@ -1,0 +1,11 @@
+{
+    "device": "example",
+    "experiment_id": "dump",
+    "api_key": "d0f9fff563c6f726415b9db1",
+    "wifi_ssid": "GLAS Secure",
+    "wifi_password": "GeorgeHale",
+    "server_url": "http://mac.tlampert.net",
+    "sleep_high_battery": 60,
+    "sleep_medium_battery": 90,
+    "sleep_low_battery": 150
+}
