@@ -7,5 +7,6 @@
     "server_url": "http://mac.tlampert.net",
     "sleep_high_battery": 60,
     "sleep_medium_battery": 90,
-    "sleep_low_battery": 150
+    "sleep_low_battery": 150,
+    "status_led": "15"
 }

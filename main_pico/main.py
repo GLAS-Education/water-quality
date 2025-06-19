@@ -4,6 +4,7 @@ from logging import log, LogFormat
 import time
 import os
 import sys
+import machine
 
 def load_components(directory: str, get_instance=None, with_setup=False):
     """
@@ -88,6 +89,39 @@ def reinitialize_module(name: str, module_path: str, get_module):
 modules = load_components("modules", get_instance=lambda m: m.Module())
 helpers = load_components("helpers", with_setup=True)
 
+def handle_status_led(failed_components, total_components):
+    """Handle status LED indication based on module and helper initialization results"""
+    try:
+        # Get status_led pin from config
+        if "config" not in helpers or helpers["config"] is None:
+            return  # No config available, skip LED
+        
+        status_led_pin = helpers["config"].get("status_led", "")
+        if not status_led_pin or status_led_pin.strip() == "":
+            return  # No LED configured, skip
+        
+        # Initialize LED pin
+        led_pin = machine.Pin(int(status_led_pin), machine.Pin.OUT)
+        
+        if failed_components > 0:
+            # Flash LED for several seconds if there are failures
+            log(f"Status LED: Flashing for {failed_components}/{total_components} failed components", "info", "~led")
+            for _ in range(10):  # Flash for ~5 seconds (10 cycles of 0.5s each)
+                led_pin.value(1)
+                time.sleep(0.25)
+                led_pin.value(0)
+                time.sleep(0.25)
+        else:
+            # Keep LED on constantly for several seconds if all components loaded successfully
+            log("Status LED: Solid on - all components loaded successfully", "success", "~led")
+            led_pin.value(1)
+            time.sleep(3)  # Stay on for 3 seconds
+            led_pin.value(0)
+            
+    except Exception as e:
+        # Don't let LED errors halt the program
+        log(f"Status LED error (continuing anyway): {str(e)}", "warning", "~led")
+
 # Error tracking for modules
 module_failures = {}  # {module_name: {'count': int, 'last_attempt': float, 'backoff': int}}
 
@@ -98,6 +132,7 @@ for name, module in modules.items():
         log(f"Module '{name}' marked as failed from initial loading", "warning", f"~{name}")
 
 loop_count = 0
+led_status_shown = False  # Track if we've shown LED status after first initialization
 
 while True:
     batch = {}
@@ -195,6 +230,26 @@ while True:
             # Use default/safe value for failed modules
             batch[name] = None
 
+    # Handle LED status indication after first initialization attempt
+    if not led_status_shown:
+        # Count actual initialization failures (modules that are None or couldn't read)
+        failed_modules = sum(1 for name, value in batch.items() 
+                           if name != "time" and value is None)
+        total_modules = len([name for name in batch.keys() if name != "time"])
+        
+        # Also count helper failures (helpers that are None)
+        failed_helpers = sum(1 for helper in helpers.values() if helper is None)
+        total_helpers = len(helpers)
+        
+        total_failed = failed_modules + failed_helpers
+        total_components = total_modules + total_helpers
+        
+        if total_failed > 0:
+            log(f"Component failures detected: {failed_modules}/{total_modules} modules, {failed_helpers}/{total_helpers} helpers", "warning", "~led")
+        
+        handle_status_led(total_failed, total_components)
+        led_status_shown = True
+
     print()
     log(f"Data retrieved in {time.time() - start_time:.2f}s!", "success")
     
@@ -262,21 +317,22 @@ while True:
             print(f"Failed to save error logs: {str(e)}")
 
     # Upload to server if WiFi is connected
-    if "wifi" in helpers and helpers["wifi"].is_connected():
+    if "wifi" in helpers and helpers["wifi"] is not None and helpers["wifi"].is_connected():
         try:
             success = helpers["wifi"].upload_batch(batch)
             if success:
                 log("Batch uploaded to server successfully", "success", "~upload")
-            else:
-                upload_error_msg = "Failed to upload batch to server"
-                log(upload_error_msg, "error")
-                loop_error_logs.append(f"{helpers['time'].get_time()} - ERROR: {upload_error_msg}")
+            # Note: upload_batch returns False and logs its own message when no API key is configured
+            # so we don't need to log an error in that case
         except Exception as e:
             wifi_error_msg = f"WiFi upload failed: {str(e)}"
             log(wifi_error_msg, "error", "~upload")
             loop_error_logs.append(f"{helpers['time'].get_time()} - ERROR: {wifi_error_msg}")
     else:
-        log("WiFi not connected - skipping server upload", "info", "~upload")
+        if "wifi" not in helpers or helpers["wifi"] is None:
+            log("WiFi helper not available - skipping server upload", "info", "~upload")
+        else:
+            log("WiFi not connected - skipping server upload", "info", "~upload")
 
     # Battery management - handle potential battery module failure
     try:

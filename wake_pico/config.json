@@ -1,11 +1,12 @@
 {
     "device": "wake",
-    "experiment_id": "dump-2",
+    "experiment_id": "trial~6-19~1",
     "api_key": "d0f9fff563c6f726415b9db1",
-    "wifi_ssid": "GLAS Secure",
-    "wifi_password": "GeorgeHale",
+    "wifi_ssid": "Teddy's iPhone",
+    "wifi_password": "Teddyl11",
     "server_url": "http://mac.tlampert.net",
-    "sleep_high_battery": 1,
-    "sleep_medium_battery": 5,
-    "sleep_low_battery": 10
+    "sleep_high_battery": 0.01,
+    "sleep_medium_battery": 0.01,
+    "sleep_low_battery": 0.01,
+    "status_led": "15"
 }

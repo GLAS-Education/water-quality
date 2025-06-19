@@ -199,6 +199,11 @@ class Helper:
         Returns:
             bool: True if successful, False otherwise
         """
+        # Skip upload if no API key is configured
+        if not self.api_key:
+            log("Skipping batch upload - no API key configured", "info", "~wifi")
+            return False
+        
         # Get device and experiment info from config
         try:
             if self.config_helper:
