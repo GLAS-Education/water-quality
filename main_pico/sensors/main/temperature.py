@@ -11,7 +11,7 @@ class Temperature(Sensor):
         try:
             self.sensor = ds18x20.DS18X20(onewire.OneWire(self.pin))
             self.roms = self.sensor.scan()
-            if len(self.roms) != 2:
+            if len(self.roms) != 4:
                 raise Exception("Could not find one or more configured temperature sensor.")
             self.read()
             return True
@@ -22,11 +22,15 @@ class Temperature(Sensor):
         try:
             self.sensor.convert_temp()
             for rom in self.roms:
-                if rom == bytearray(b'(\x99\xb2\x96\xf0\x01<I'):
+                if rom == bytearray(b'(\xb8\xce\x81\xe3\xee<\xf9'):
                     temp1 = round(self.sensor.read_temp(rom), 2)
-                elif rom == bytearray(b'(/\xbcI\xf6\xcf<|'):
+                if rom == bytearray(b'(\xbb\x19I\xf6\x13<\xe5'):
                     temp2 = round(self.sensor.read_temp(rom), 2)
-            return f"{temp1},{temp2}"
+                if rom == bytearray(b'(\xbd\x17\xd9\x0e\x00\x00\x18'):
+                    temp3 = round(self.sensor.read_temp(rom), 2)
+                elif rom == bytearray(b'(\r\xe9\xd0\x0e\x00\x00\x88'):
+                    temp4 = round(self.sensor.read_temp(rom), 2)
+            return f"{temp1},{temp2},{temp3},{temp4}"
         except Exception as err:
             return err
 
