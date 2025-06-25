@@ -19,9 +19,6 @@ Infrequently (every 2-10 minutes), monitor & record:
     - Measure clearness of water
 - pH sensor
     - Measure acidity of water
-- SOON: Cellular module
-    - Sync RTC
-    - Upload data to the cloud
 
 ### Secondary Pico (frequent)
 
