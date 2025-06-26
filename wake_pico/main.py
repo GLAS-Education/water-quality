@@ -101,17 +101,17 @@ class Probe:
             file.write(f"{cur_time}: {data}\n")
         
         # Send over Bluetooth
-        degree_rot = ",".join(list(map(lambda x: str((math.pi / 180) * float(x)), data[SensorID.absrot].split(","))))
+        radian_rot = ",".join(list(map(lambda x: str((math.pi / 180) * float(x)), data[SensorID.absrot].split(","))))
         ble_payload = ";".join([
             self.id,
             str(self.iterations),
             "/".join(list(map(lambda x: str(x), list(cur_time)))),
             str(min(data[SensorID.hydrophone], 3)),
             str(data[SensorID.water_level]),
-            ";".join(["-1"] if data[SensorID.absrot] == -1 else degree_rot.split(",")[0:3]),
-            str(min(abs((self.last_rot[0] - float(degree_rot.split(",")[0])) + (self.last_rot[1] - float(degree_rot.split(",")[1])) + (self.last_rot[2] - float(degree_rot.split(",")[2]))), 40))
+            ";".join(["-1"] if data[SensorID.absrot] == -1 else radian_rot.split(",")[0:3]),
+            str(min(abs((self.last_rot[0] - float(radian_rot.split(",")[0])) + (self.last_rot[1] - float(radian_rot.split(",")[1])) + (self.last_rot[2] - float(radian_rot.split(",")[2]))), 40))
         ])
-        self.last_rot = list(map(lambda x: float(x if x != -1 else 0), degree_rot.split(",")))[0:3]
+        self.last_rot = list(map(lambda x: float(x if x != -1 else 0), radian_rot.split(",")))[0:3]
         if self.ble_sp.is_connected():
             self.ble_sp.send(ble_payload)
 
