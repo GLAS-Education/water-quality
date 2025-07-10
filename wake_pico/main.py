@@ -1,6 +1,8 @@
 import bluetooth, math, time, json, uos, os, sdcard, machine
 from structs import Sensor, ProbeID, SensorID, LogFormat, IntentionalUndefined
 from btlib.ble_simple_peripheral import BLESimplePeripheral
+from machine import I2C, RTC, Pin
+import ds1307
 
 from sensors.wake.led import StatusLED
 from sensors.wake.audio import Hydrophone
@@ -31,6 +33,14 @@ class Probe:
         # Connect to Bluetooth
         ble = bluetooth.BLE()
         self.ble_sp = BLESimplePeripheral(ble)
+        
+        # Setup RTC
+        i2c = I2C(0, scl=Pin(17), sda=Pin(16))
+        ds = ds1307.DS1307(i2c)
+        ds = ds.datetime()
+        self.rtc = RTC()
+        self.rtc.datetime((ds[0], ds[1], ds[2], ds[3]+1, ds[4], ds[5], ds[6], 0))
+        print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}RTC{LogFormat.RESET} has been initialized!")
         
         # Setup SD card
         cs = machine.Pin(1, machine.Pin.OUT)
@@ -94,7 +104,7 @@ class Probe:
         return data
 
     def save_data(self, data):
-        cur_time = time.localtime()
+        cur_time = self.rtc.datetime()()
 
         # Save to SD card
         with open("/sd/data.txt", "a") as file:
