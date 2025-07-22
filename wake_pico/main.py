@@ -104,7 +104,7 @@ class Probe:
         return data
 
     def save_data(self, data):
-        cur_time = self.rtc.datetime()()
+        cur_time = self.rtc.datetime()
 
         # Save to SD card
         with open("/sd/data.txt", "a") as file:

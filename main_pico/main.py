@@ -2,9 +2,7 @@ import bluetooth, math, time, json, uos, os, sdcard, ds1307
 from structs import Sensor, ProbeID, SensorID, LogFormat, IntentionalUndefined
 from btlib.ble_simple_peripheral import BLESimplePeripheral
 from machine import I2C, Pin, RTC
-import machine
-
-from sensors.main.led import StatusLED
+# from sensors.main.led import StatusLED
 from sensors.main.voltage import BatteryVoltage
 from sensors.main.temperature import Temperature
 # from sensors.main.turbidity import Turbidity
@@ -18,7 +16,7 @@ class Probe:
         self.iterations = 0
 
         # Add sensors from probe directory
-        self.sensors[SensorID.status_led] = StatusLED()
+        # self.sensors[SensorID.status_led] = StatusLED()
         self.sensors[SensorID.voltage] = BatteryVoltage()
         self.sensors[SensorID.temperature] = Temperature()
         # self.sensors[SensorID.turbidity] = Turbidity()
@@ -48,13 +46,13 @@ class Probe:
         self.init()
         print(f"{LogFormat.Foreground.ORANGE}↓ {LogFormat.RESET}Data intake loop is about to start...")
         time.sleep(5)
-        
+                
         while True:
             data = self.read_loop()
             self.save_data(data)
             
             def check_scheduled_reboot():
-                if self.rtc.datetime()()[3] == 23 and self.rtc.datetime()()[4] == 54 and self.rtc.datetime()()[5] >= 45 and self.rtc.datetime()()[5] <= 59:
+                if self.rtc.datetime()[3] == 23 and self.rtc.datetime()[4] == 54 and self.rtc.datetime()[5] >= 45 and self.rtc.datetime()[5] <= 59:
                     print(LogFormat.Foreground.RED + "About to perform scheduled reboot...")
                     self.save_data(data, -10) # -10 is code for about to run a scheduled reboot
                     machine.reset()
@@ -83,7 +81,7 @@ class Probe:
                 for i in range(10):
                    self.save_data(data, 10 - i)
                    time.sleep(1)
-
+    
     def init(self):
         time.sleep(10)
         print(f"{LogFormat.Foreground.ORANGE}~ {LogFormat.RESET}Initializing sensors for {LogFormat.Foreground.LIGHT_GREY}{self.id}{LogFormat.RESET} probe...")
@@ -115,7 +113,7 @@ class Probe:
         return data
 
     def save_data(self, data, refresh_countdown = 0):
-        cur_time = self.rtc.datetime()
+        cur_time = self.rtc.datetime() #Sometimes wants ()(), if getting tuple error reduce to ()
 
         # Save to SD card
         data["_ITERATIONS"] = self.iterations
@@ -150,5 +148,6 @@ class Probe:
         print(LogFormat.Foreground.DARK_GREY + "-----------------------------------")
 
 
-if __name__ in ["main", "__main__"]: # mpremote exec, startup
-    Probe(ProbeID.wake)
+if __name__ == "__main__":
+    Probe(ProbeID.main)
+

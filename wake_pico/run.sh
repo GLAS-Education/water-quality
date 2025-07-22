@@ -1,1 +1,0 @@
-mpremote exec "import os; exec('def rm(p):\\n try:\\n  for i in os.listdir(p): rm(p+\"/\"+i)\\n  os.rmdir(p)\\n except: os.remove(p)\\nfor i in os.listdir():\\n if i not in [\"lib\",\"archive\"]: rm(i)')" && mpremote cp -r . : && mpremote exec "import main"

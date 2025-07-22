@@ -8,16 +8,21 @@
 
 import machine
 from structs import Sensor, SensorID
-import bno08x
+import bno08x  # Dobodu MicroPython library
 
 class AbsoluteOrientation(Sensor):
     def __init__(self):
         super().__init__(SensorID.absrot)
         self.forced_error_value = "-1,-1,-1"
 
+    # ─────────────────────────── init ───────────────────────────────────────
     def init(self):
         try:
-            self.i2c = machine.I2C(1, scl=machine.Pin(19), sda=machine.Pin(18), freq=400_000)
+            # Pico’s I²C-1 on GP18 (SDA) / GP19 (SCL)
+            self.i2c = machine.I2C(1, scl=machine.Pin(19),
+                                      sda=machine.Pin(18),
+                                      freq=400_000)
+            # Create the sensor object
             self.sensor = bno08x.BNO08X(self.i2c)
 
             # Enable the four data streams we’ll read
@@ -34,15 +39,25 @@ class AbsoluteOrientation(Sensor):
         except Exception as err:
             return err
 
+    # ─────────────────────────── read ───────────────────────────────────────
     def read(self):
+        """
+        Returns a 16-value CSV string:
+
+            yaw,pitch,roll,
+            ax,ay,az,
+            gx,gy,gz,
+            qx,qy,qz,qw,
+            lax,lay,laz
+        """
         try:
             s = self.sensor
 
-            euler = s.euler
-            accel = s.acc
-            gyro  = s.gyro
-            quat  = s.quaternion
-            lin   = s.acc_linear
+            euler = s.euler              # (Roll, Tilt, Pan) in ° – same tuple-length
+            accel = s.acc               # m s⁻²
+            gyro  = s.gyro              # rad s⁻¹
+            quat  = s.quaternion        # (x, y, z, w)
+            lin   = s.acc_linear        # m s⁻² (gravity removed)
 
             return (
                 f"{euler[0]},{euler[1]},{euler[2]},"

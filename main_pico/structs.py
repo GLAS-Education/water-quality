@@ -8,7 +8,7 @@ SensorID = enum(
     voltage = "BATTERY_VOLTAGE",
     temperature = "TEMPERATURE",
     turbidity = "TURBIDITY",
-    ph = "PH"
+    ph = "PH",
 )
 
 IntentionalNull = "-1"

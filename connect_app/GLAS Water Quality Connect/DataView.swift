@@ -23,8 +23,11 @@ struct DataView: View {
     @State private var rotationalChangeData: [DataEntry] = []
     @State private var temperature1Data: [DataEntry] = []
     @State private var temperature2Data: [DataEntry] = []
+    @State private var temperature3Data: [DataEntry] = []
+    @State private var temperature4Data: [DataEntry] = []
     @State private var phData: [DataEntry] = []
     @State private var turbidityData: [DataEntry] = []
+    @State private var refreshCountdownData: [DataEntry] = []
     @State private var scene: SCNScene?
     
     var body: some View {
@@ -75,7 +78,7 @@ struct DataView: View {
                     Chart {
                         ForEach(Array(voltageData.enumerated()), id: \.0.self) { (idx, entry) in
                             LineMark(
-                                x: .value("ID", entry.key as! Int),
+                                x: .value("ID", idx),
                                 y: .value("Value", entry.value as! Double)
                             )
                         }
@@ -100,7 +103,7 @@ struct DataView: View {
                     Chart {
                         ForEach(Array(temperature1Data.enumerated()), id: \.0.self) { (idx, entry) in
                             LineMark(
-                                x: .value("ID", entry.key as! Int),
+                                x: .value("ID", idx),
                                 y: .value("Value", entry.value as! Double)
                             )
                         }
@@ -125,7 +128,57 @@ struct DataView: View {
                     Chart {
                         ForEach(Array(temperature2Data.enumerated()), id: \.0.self) { (idx, entry) in
                             LineMark(
-                                x: .value("ID", entry.key as! Int),
+                                x: .value("ID", idx),
+                                y: .value("Value", entry.value as! Double)
+                            )
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading)
+                    }
+                    .chartXScale(domain: .automatic(includesZero: false))
+                    .chartYScale(domain: .automatic(includesZero: false))
+                    .frame(height: 300)
+                }
+                .padding(.horizontal, 29)
+                .padding(.bottom)
+                
+                VStack {
+                    HStack {
+                        Text("Temperature Sensor 3")
+                            .font(.title2)
+                            .monospaced()
+                        Spacer()
+                    }
+                    Chart {
+                        ForEach(Array(temperature3Data.enumerated()), id: \.0.self) { (idx, entry) in
+                            LineMark(
+                                x: .value("ID", idx),
+                                y: .value("Value", entry.value as! Double)
+                            )
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading)
+                    }
+                    .chartXScale(domain: .automatic(includesZero: false))
+                    .chartYScale(domain: .automatic(includesZero: false))
+                    .frame(height: 300)
+                }
+                .padding(.horizontal, 29)
+                .padding(.bottom)
+                
+                VStack {
+                    HStack {
+                        Text("Temperature Sensor 4")
+                            .font(.title2)
+                            .monospaced()
+                        Spacer()
+                    }
+                    Chart {
+                        ForEach(Array(temperature4Data.enumerated()), id: \.0.self) { (idx, entry) in
+                            LineMark(
+                                x: .value("ID", idx),
                                 y: .value("Value", entry.value as! Double)
                             )
                         }
@@ -150,7 +203,7 @@ struct DataView: View {
                     Chart {
                         ForEach(Array(phData.enumerated()), id: \.0.self) { (idx, entry) in
                             LineMark(
-                                x: .value("ID", entry.key as! Int),
+                                x: .value("ID", idx),
                                 y: .value("Value", entry.value as! Double)
                             )
                         }
@@ -175,7 +228,7 @@ struct DataView: View {
                     Chart {
                         ForEach(Array(turbidityData.enumerated()), id: \.0.self) { (idx, entry) in
                             LineMark(
-                                x: .value("ID", entry.key as! Int),
+                                x: .value("ID", idx),
                                 y: .value("Value", entry.value as! Double)
                             )
                         }
@@ -185,6 +238,31 @@ struct DataView: View {
                     }
                     .chartXScale(domain: .automatic(includesZero: false))
                     .chartYScale(domain: .automatic(includesZero: false))
+                    .frame(height: 300)
+                }
+                .padding(.horizontal, 29)
+                .padding(.bottom)
+                
+                VStack {
+                    HStack {
+                        Text("Refresh Countdown")
+                            .font(.title2)
+                            .monospaced()
+                        Spacer()
+                    }
+                    Chart {
+                        ForEach(Array(refreshCountdownData.enumerated()), id: \.0.self) { (idx, entry) in
+                            LineMark(
+                                x: .value("ID", idx),
+                                y: .value("Value", entry.value as! Int)
+                            )
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading)
+                    }
+                    .chartXScale(domain: .automatic(includesZero: false))
+                    .chartYScale(domain: 0...150)
                     .frame(height: 300)
                 }
                 .padding(.horizontal, 29)
@@ -351,60 +429,68 @@ struct DataView: View {
                 // Runtime/iterations
                 let allRuntimeData = sharedState.bluetoothManager.storedData.filter { $0.type == .runtime }
                 if allRuntimeData.count != 0 {
-                    runtimeData = allRuntimeData.reversed()[0].value as? Int
-                    
-                    // Timestamp all data with current runtime
-                    sharedState.bluetoothManager.storedData = sharedState.bluetoothManager.storedData.map { entry in
-                        return DataEntry(type: entry.type, key: entry.key ?? runtimeData, value: entry.value)
+                    let newRuntimeData = allRuntimeData.reversed()[0].value as? Int
+                    if newRuntimeData != runtimeData {
+                        // Timestamp, according to RTC
+                        let allRTCData = sharedState.bluetoothManager.storedData.filter { $0.type == .realTimeClock }
+                        if allRTCData.count != 0 {
+                            rtcData = allRTCData.reversed()[0].value as? String
+                        }
+                        
+                        // Battery voltage
+                        voltageData = sharedState.bluetoothManager.storedData.filter { $0.type == .batteryVoltage }
+                        
+                        // Sound level
+                        soundLevelData = sharedState.bluetoothManager.storedData.filter { $0.type == .soundLevel }
+                        
+                        // Water level
+                        waterLevelData = sharedState.bluetoothManager.storedData.filter { $0.type == .waterLevel }
+                        
+                        // Rotational change
+                        rotationalChangeData = sharedState.bluetoothManager.storedData.filter { $0.type == .rotationalChange }
+                        
+                        // 9D rotation
+                        let allEulerXData = sharedState.bluetoothManager.storedData.filter { $0.type == .eulerX }
+                        let allEulerYData = sharedState.bluetoothManager.storedData.filter { $0.type == .eulerY }
+                        let allEulerZData = sharedState.bluetoothManager.storedData.filter { $0.type == .eulerZ }
+                        
+                        if allEulerXData.count != 0 {
+                            eulerXData = allEulerXData.reversed()[0].value as? Double
+                        }
+                        if allEulerYData.count != 0 {
+                            eulerYData = allEulerYData.reversed()[0].value as? Double
+                        }
+                        if allEulerZData.count != 0 {
+                            eulerZData = allEulerZData.reversed()[0].value as? Double
+                        }
+                        
+                        let object = scene?.rootNode.childNode(withName: "object", recursively: true)
+                        object!.eulerAngles.x = Float(eulerXData ?? 0)
+                        object!.eulerAngles.y = Float(eulerYData ?? 0)
+                        object!.eulerAngles.z = Float(eulerZData ?? 0)
+                        
+                        // Temperature sensors
+                        temperature1Data = sharedState.bluetoothManager.storedData.filter { $0.type == .temperature1 }
+                        temperature2Data = sharedState.bluetoothManager.storedData.filter { $0.type == .temperature2 }
+                        temperature3Data = sharedState.bluetoothManager.storedData.filter { $0.type == .temperature3 }
+                        temperature4Data = sharedState.bluetoothManager.storedData.filter { $0.type == .temperature4 }
+                        
+                        // pH sensors
+                        phData = sharedState.bluetoothManager.storedData.filter { $0.type == .pH }
+                        
+                        // Turbidity sensors
+                        turbidityData = sharedState.bluetoothManager.storedData.filter { $0.type == .turbidity }
                     }
+                    // Refresh countdown
+                    refreshCountdownData = sharedState.bluetoothManager.storedData.filter { $0.type == .refreshCountdown }
+                    runtimeData = newRuntimeData
                 }
-                
-                // Timestamp, according to RTC
-                let allRTCData = sharedState.bluetoothManager.storedData.filter { $0.type == .realTimeClock }
-                if allRTCData.count != 0 {
-                    rtcData = allRTCData.reversed()[0].value as? String
-                }
-                
-                // Battery voltage
-                voltageData = sharedState.bluetoothManager.storedData.filter { $0.type == .batteryVoltage }
-                
-                // Sound level
-                soundLevelData = sharedState.bluetoothManager.storedData.filter { $0.type == .soundLevel }
-                
-                // Water level
-                waterLevelData = sharedState.bluetoothManager.storedData.filter { $0.type == .waterLevel }
-                
-                // Rotational change
-                rotationalChangeData = sharedState.bluetoothManager.storedData.filter { $0.type == .rotationalChange }
-                
-                // 9D rotation
-                let allEulerXData = sharedState.bluetoothManager.storedData.filter { $0.type == .eulerX }
-                let allEulerYData = sharedState.bluetoothManager.storedData.filter { $0.type == .eulerY }
-                let allEulerZData = sharedState.bluetoothManager.storedData.filter { $0.type == .eulerZ }
-                
-                if allEulerXData.count != 0 {
-                    eulerXData = allEulerXData.reversed()[0].value as? Double
-                }
-                if allEulerYData.count != 0 {
-                    eulerYData = allEulerYData.reversed()[0].value as? Double
-                }
-                if allEulerZData.count != 0 {
-                    eulerZData = allEulerZData.reversed()[0].value as? Double
-                }
-                
-                let object = scene?.rootNode.childNode(withName: "object", recursively: true)
-                object!.eulerAngles.x = Float(eulerXData ?? 0)
-                object!.eulerAngles.y = Float(eulerYData ?? 0)
-                object!.eulerAngles.z = Float(eulerZData ?? 0)
-                
-                // Temperature sensors
-                temperature1Data = sharedState.bluetoothManager.storedData.filter { $0.type == .temperature1 }
-                temperature2Data = sharedState.bluetoothManager.storedData.filter { $0.type == .temperature2 }
             }
         }
         .navigationTitle("Data Explorer")
         .toolbar {
             Button("Clear") {
+                runtimeData = nil
                 sharedState.bluetoothManager.storedData = []
                 sharedState.bluetoothManager.rawSignals = []
             }
