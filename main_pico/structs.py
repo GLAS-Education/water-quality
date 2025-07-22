@@ -9,6 +9,7 @@ SensorID = enum(
     temperature = "TEMPERATURE",
     turbidity = "TURBIDITY",
     ph = "PH",
+    tds = "TDS",
 )
 
 IntentionalNull = "-1"

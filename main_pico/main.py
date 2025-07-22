@@ -2,11 +2,13 @@ import bluetooth, math, time, json, uos, os, sdcard, ds1307
 from structs import Sensor, ProbeID, SensorID, LogFormat, IntentionalUndefined
 from btlib.ble_simple_peripheral import BLESimplePeripheral
 from machine import I2C, Pin, RTC
+import machine
 # from sensors.main.led import StatusLED
-from sensors.main.voltage import BatteryVoltage
+from sensors.main.battery import Battery
 from sensors.main.temperature import Temperature
 # from sensors.main.turbidity import Turbidity
 from sensors.main.ph import pH
+from sensors.main.tds import TDS
 
 
 class Probe:
@@ -17,10 +19,11 @@ class Probe:
 
         # Add sensors from probe directory
         # self.sensors[SensorID.status_led] = StatusLED()
-        self.sensors[SensorID.voltage] = BatteryVoltage()
+        self.sensors[SensorID.voltage] = Battery()
         self.sensors[SensorID.temperature] = Temperature()
         # self.sensors[SensorID.turbidity] = Turbidity()
         self.sensors[SensorID.ph] = pH()
+        self.sensors[SensorID.tds] = TDS()
 
         # Connect to Bluetooth
         ble = bluetooth.BLE()
@@ -61,18 +64,18 @@ class Probe:
                 # Scheduled reboot
                 check_scheduled_reboot()
                 
-                # Custom: sleep time dynamic to voltage    
-                if data[SensorID.voltage] >= 4.10:
+                # Custom: sleep time dynamic to battery percentage
+                if data[SensorID.voltage] >= 90.0:  # 90% battery
                     for i in range(60):
                         self.save_data(data, 60 - i)
                         check_scheduled_reboot()
                         time.sleep(1)
-                elif data[SensorID.voltage] >= 4.00:
+                elif data[SensorID.voltage] >= 80.0:  # 80% battery
                     for i in range(90):
                         self.save_data(data, 90 - i)
                         check_scheduled_reboot()
                         time.sleep(1)
-                else:
+                else:  # Low battery
                     for i in range(150):
                         self.save_data(data, 150 - i)
                         check_scheduled_reboot()
@@ -132,6 +135,7 @@ class Probe:
             str(data[SensorID.voltage]),
             data[SensorID.temperature].replace(",", ";"),
             str(data[SensorID.ph]),
+            str(data[SensorID.tds]),
             str(data[SensorID.turbidity]),
             str(refresh_countdown)
         ])
@@ -148,6 +152,6 @@ class Probe:
         print(LogFormat.Foreground.DARK_GREY + "-----------------------------------")
 
 
-if __name__ == "__main__":
+if __name__ in ["main", "__main__"]: # mpremote exec, startup
     Probe(ProbeID.main)
 
