@@ -1,6 +1,6 @@
 import machine
 from structs import Sensor, SensorID, IntentionalNull
-
+import time
 
 class pH(Sensor):
     def __init__(self):
@@ -17,12 +17,11 @@ class pH(Sensor):
     
     def read(self):
         try:
+            self.uart.write("R\r")
+            time.sleep(1)
             if self.uart.any():
-                return str(self.uart.read()).split("\\r")[-2].replace("b'", "")
+                return float(str(self.uart.read())[2:].split("\\")[0])
             else:
                 return IntentionalNull
         except Exception as err:
             return err
-
-
-
