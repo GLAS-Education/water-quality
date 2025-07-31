@@ -12,7 +12,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # Database configuration
-DATABASE_URI = os.environ.get('DATABASE_URI')
+DATABASE_URL = os.environ.get('DATABASE_URL')
 API_KEY = os.environ.get('API_KEY')
 
 def require_api_key(f):
@@ -37,7 +37,7 @@ def require_api_key(f):
 
 def init_db():
     """Initialize database with schema"""
-    conn = psycopg2.connect(DATABASE_URI)
+    conn = psycopg2.connect(DATABASE_URL)
     with open('schema.sql', 'r') as f:
         with conn.cursor() as cur:
             cur.execute(f.read())
@@ -46,7 +46,7 @@ def init_db():
 
 def get_db_connection():
     """Get database connection"""
-    return psycopg2.connect(DATABASE_URI)
+    return psycopg2.connect(DATABASE_URL)
 
 # API Endpoints
 @app.route('/api/main', methods=['POST'])
@@ -57,10 +57,10 @@ def add_main_data():
     conn = get_db_connection()
     with conn.cursor() as cur:
         cur.execute('''
-            INSERT INTO main_data (temperature_1, temperature_2, temperature_3, temperature_4, 
+            INSERT INTO main_data (experiment_id, temperature_1, temperature_2, temperature_3, temperature_4, 
                                   ph, battery_level, tds, turbidity)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        ''', (data['temperature_1'], data['temperature_2'], data['temperature_3'], 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (data['experiment_id'], data['temperature_1'], data['temperature_2'], data['temperature_3'], 
               data['temperature_4'], data['ph'], data['battery_level'], 
               data['tds'], data['turbidity']))
     conn.commit()
@@ -84,10 +84,10 @@ def add_wake_data():
     conn = get_db_connection()
     with conn.cursor() as cur:
         cur.execute('''
-            INSERT INTO wake_data (yaw, pitch, roll, ax, ay, az, gx, gy, gz, 
+            INSERT INTO wake_data (experiment_id, yaw, pitch, roll, ax, ay, az, gx, gy, gz, 
                                   qx, qy, qz, qw, lax, lay, laz, hydrophone_reading, water_level)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ''', (yaw, pitch, roll, ax, ay, az, gx, gy, gz, qx, qy, qz, qw, lax, lay, laz,
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (data['experiment_id'], yaw, pitch, roll, ax, ay, az, gx, gy, gz, qx, qy, qz, qw, lax, lay, laz,
               data['hydrophone_reading'], data['water_level']))
     conn.commit()
     conn.close()
@@ -128,6 +128,6 @@ if __name__ == '__main__':
     
     print("🌊 GLAS Store Server Starting...")
     print("📊 Database initialized")
-    print("🚀 Server running on http://localhost:5555")
+    print("🚀 Server running on http://localhost:5000")
     
-    app.run(debug=True, host='0.0.0.0', port=5555)
+    app.run(debug=True, host='0.0.0.0', port=5000)
