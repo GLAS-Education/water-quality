@@ -9,7 +9,7 @@ from sensors.main.temperature import Temperature
 from sensors.main.ph import pH
 from sensors.main.tds import TDS
 
-
+EXPERIMENT_ID = ""
 API_ENDPOINT = ""
 API_KEY = ""
 WIFI_NAME = ""
@@ -197,6 +197,7 @@ class Probe:
             temp_values.append("-1")
         
         api_payload = {
+            "experiment_id": EXPERIMENT_ID,
             "temperature_1": float(temp_values[0]) if temp_values[0] != "-9" else None,
             "temperature_2": float(temp_values[1]) if temp_values[1] != "-9" else None,
             "temperature_3": float(temp_values[2]) if temp_values[2] != "-9" else None,
