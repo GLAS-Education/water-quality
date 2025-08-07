@@ -1,0 +1,126 @@
+from machine import ADC, Pin
+import time
+
+sensor = ADC(Pin(28))
+
+def avg(lst):
+    return sum(lst) / len(lst)
+
+while True:
+    val = sensor.read_u16() / 1_000
+    if val > 50 or int(val) in [42, 43, 44]:
+        print("Out of water: " + str(val))
+    elif int(val) in [46, 47]:
+        print("Dirty water: " + str(val))
+    else:
+        print("Clean water: " + str(val))
+    """print(sensor.read_u16() * (5/1024))
+    print(sensor.read_u16() * (3/1024))
+    print(sensor.read_u16() * (3.33/65535))
+    print()"""
+    time.sleep(0.5)
+
+
+"""
+# Entry 1
+print("Entry 1")
+data_1 = []
+time.sleep(10)
+print("START")
+print("---")
+for i in range(5):
+    data_1.append(sensor.read_u16())
+    print(f"{sensor.read_u16()} ({len(data_1)} / 5)")
+    time.sleep(0.35)
+print("---")
+print("STOP\n")
+
+# Entry 2
+print("Entry 2")
+data_2 = []
+time.sleep(10)
+print("START")
+print("---")
+for i in range(5):
+    data_2.append(sensor.read_u16())
+    print(f"{sensor.read_u16()} ({len(data_2)} / 5)")
+    time.sleep(0.35)
+print("---")
+print("STOP\n")
+
+# Entry 3
+print("Entry 3")
+data_3 = []
+time.sleep(10)
+print("START")
+print("---")
+for i in range(5):
+    data_3.append(sensor.read_u16())
+    print(f"{sensor.read_u16()} ({len(data_3)} / 5)")
+    time.sleep(0.35)
+print("---")
+print("STOP\n\n")
+
+
+# Results
+print("<RESULTS>")
+
+values = ((1, min(data_1)), (2, min(data_2)), (3, min(data_3)))
+sorted_vals = values.sort(key=lambda x : x[1])
+
+print(f"Out of water: #{sorted_vals[0][0]}")
+print(f"Clean water: #{sorted_vals[1][0]}")
+print(f"Dirty water: #{sorted_vals[2][0]}")
+
+"""
+
+
+
+
+
+""" Training code
+# Out of water
+print("Out of water")
+data_1 = []
+time.sleep(10)
+print("START")
+print("---")
+for i in range(50):
+    data_1.append(sensor.read_u16())
+    print(f"{sensor.read_u16()} ({len(data_1)} / 50)")
+    time.sleep(0.35)
+print("---")
+print("STOP\n")
+
+# Clean water
+print("Clean water")
+data_2 = []
+time.sleep(10)
+print("START")
+print("---")
+for i in range(50):
+    data_2.append(sensor.read_u16())
+    print(f"{sensor.read_u16()} ({len(data_2)} / 50)")
+    time.sleep(0.35)
+print("---")
+print("STOP\n")
+
+
+# Dirty water
+print("Dirty water")
+data_3 = []
+time.sleep(10)
+print("START")
+print("---")
+for i in range(50):
+    data_3.append(sensor.read_u16())
+    print(f"{sensor.read_u16()} ({len(data_3)} / 50)")
+    time.sleep(0.35)
+print("---")
+print("STOP\n\n")
+
+# Results
+print("<RESULTS>")
+print(f"Out of water: {avg(data_1)} ({min(data_1)} - {max(data_1)})")
+print(f"Clean water: {avg(data_2)} ({min(data_2)} - {max(data_2)})")
+print(f"Dirty water: {avg(data_3)} ({min(data_3)} - {max(data_3)})")"""

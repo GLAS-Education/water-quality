@@ -166,7 +166,7 @@ class Probe:
             self.ble_sp.send(ble_payload)
         
         # Send over LoRa
-        if self.lora is not None:
+        if self.lora is not None and refresh_countdown == 0:
             try:
                 # Use the new simple send_text API with GP19 state appended
                 self.lora.send_text(lora_payload)
@@ -188,4 +188,5 @@ class Probe:
 
 if __name__ in ["main", "__main__"]: # mpremote exec, startup
     Probe(ProbeID.main)
+
 
