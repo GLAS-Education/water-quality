@@ -8,11 +8,11 @@ import framebuf
 import gc
 
 # Configuration
-WIFI_SSID = "GLAS Secure"  # Change this
-WIFI_PASSWORD = "GeorgeHale"  # Change this
-SERVER_URL = "http://mac.tlampert.net"  # Change this
-API_KEY = "1234"  # Change this
-EXPERIMENT_ID = "inoffice0.1"  # Change this
+WIFI_SSID = "Placeholder"
+WIFI_PASSWORD = "Placeholder"
+SERVER_URL = "http://example.com"  # Use HTTP, don't include "/api/main" or similar, end with no slash
+API_KEY = "Placeholder"
+EXPERIMENT_ID = "placeholder"
 
 # LCD Pins
 BL = 13
