@@ -3,6 +3,7 @@ from structs import Sensor, ProbeID, SensorID, LogFormat, IntentionalUndefined
 from btlib.ble_simple_peripheral import BLESimplePeripheral
 from machine import I2C, Pin, RTC
 import machine
+from rfm9x import RFM9x
 # from sensors.main.led import StatusLED
 from sensors.main.battery import Battery
 from sensors.main.temperature import Temperature
@@ -45,6 +46,20 @@ class Probe:
         uos.mount(vfs, "/sd")
         
         print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}SD_CARD{LogFormat.RESET} has been initialized!")
+        
+        # Setup LoRa RFM9x with user-specified pins: CS=GP5, Reset=GP14, MOSI=GP7, MISO=GP0, SCK=GP6
+        try:
+            lora_cs = machine.Pin(5, machine.Pin.OUT)
+            lora_rst = machine.Pin(14, machine.Pin.OUT)
+            lora_spi = machine.SPI(0, baudrate=5000000, polarity=0, phase=0, bits=8, firstbit=machine.SPI.MSB, sck=machine.Pin(6), mosi=machine.Pin(7), miso=machine.Pin(0))
+            self.lora = RFM9x(lora_spi, lora_cs, lora_rst, frequency=915.0, tx_power=17)
+            print(f"{LogFormat.Foreground.GREEN}✓ {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}LORA_RFM9X{LogFormat.RESET} has been initialized!")
+        except Exception as e:
+            print(f"{LogFormat.Foreground.RED}X {LogFormat.RESET}Accessory {LogFormat.Foreground.LIGHT_GREY}LORA_RFM9X{LogFormat.RESET} failed to initialize: {e}")
+            self.lora = None
+            
+        # Setup GP19 as input pin for signal reading
+        self.water_signal_pin = machine.Pin(19, machine.Pin.IN)
 
         self.init()
         print(f"{LogFormat.Foreground.ORANGE}↓ {LogFormat.RESET}Data intake loop is about to start...")
@@ -127,6 +142,9 @@ class Probe:
             with open("/sd/data.txt", "a") as file:
                 file.write(f"{cur_time}: {data}\n")
 
+        # Read GP19 signal state
+        water_signal_state = bool(self.water_signal_pin.value())
+        
         # Send over Bluetooth
         ble_payload = ";".join([
             self.id,
@@ -139,14 +157,30 @@ class Probe:
             str(data[SensorID.turbidity]),
             str(refresh_countdown)
         ])
+        
+        # Create LoRa payload with GP19 state appended
+        lora_payload = ble_payload + ";" + str(int(water_signal_state))
+
+        # Send over BLE
         if self.ble_sp.is_connected():
             self.ble_sp.send(ble_payload)
+        
+        # Send over LoRa
+        if self.lora is not None:
+            try:
+                # Use the new simple send_text API with GP19 state appended
+                self.lora.send_text(lora_payload)
+            except TimeoutError:
+                print(f"{LogFormat.Foreground.RED}X {LogFormat.RESET}LoRa transmission timed out")
+            except Exception as e:
+                print(f"{LogFormat.Foreground.RED}X {LogFormat.RESET}LoRa transmission failed: {e}")
 
         # Print for debugging
         print()
         print(LogFormat.Foreground.DARK_GREY + "-----------------------------------")
         print(LogFormat.Foreground.LIGHT_GREY + "Time: " + LogFormat.Foreground.LIGHT_GREEN + str(cur_time) + LogFormat.Foreground.DARK_GREY)
         print(LogFormat.Foreground.LIGHT_GREY + "BLE: " + LogFormat.Foreground.LIGHT_BLUE + ("" if self.ble_sp.is_connected() else LogFormat.STRIKETHROUGH) + ble_payload + LogFormat.RESET + LogFormat.Foreground.DARK_GREY)
+        print(LogFormat.Foreground.LIGHT_GREY + "LoRa: " + LogFormat.Foreground.PINK + ("" if self.lora is not None else LogFormat.STRIKETHROUGH) + lora_payload + LogFormat.RESET + LogFormat.Foreground.DARK_GREY)
         print()
         print(LogFormat.Foreground.DARK_GREY + json.dumps(data).replace("{", "{\n    ").replace("}", "\n}").replace(", ", ", \n    ").replace("\"-9\"", "Exception").replace("\"-1\"", "None").replace("\"-1,1\"", "None").replace("\"-1,-1,-1\"", "None"))
         print(LogFormat.Foreground.DARK_GREY + "-----------------------------------")
@@ -154,3 +188,4 @@ class Probe:
 
 if __name__ in ["main", "__main__"]: # mpremote exec, startup
     Probe(ProbeID.main)
+

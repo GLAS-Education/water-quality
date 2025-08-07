@@ -58,11 +58,11 @@ def add_main_data():
     with conn.cursor() as cur:
         cur.execute('''
             INSERT INTO main_data (experiment_id, temperature_1, temperature_2, temperature_3, temperature_4, 
-                                  ph, battery_level, tds, turbidity)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                  ph, battery_level, tds, turbidity, water_detected)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (data['experiment_id'], data['temperature_1'], data['temperature_2'], data['temperature_3'], 
               data['temperature_4'], data['ph'], data['battery_level'], 
-              data['tds'], data['turbidity']))
+              data['tds'], data['turbidity'], data['water_detected']))
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})

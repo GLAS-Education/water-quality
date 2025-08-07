@@ -23,6 +23,7 @@ class Probe:
         self.delay = 0.25  # second(s)
         self.iterations = 0
         self.last_rot = (0.0, 0.0, 0.0) # Unique to `absrot`
+        self.water_signal_pin = machine.Pin(14, machine.Pin.OUT)
 
         # Add sensors from probe directory
         self.sensors[SensorID.status_led] = StatusLED()
@@ -124,6 +125,14 @@ class Probe:
         self.last_rot = list(map(lambda x: float(x if x != -1 else 0), radian_rot.split(",")))[0:3]
         if self.ble_sp.is_connected():
             self.ble_sp.send(ble_payload)
+        
+        # Signal if water is detected to the main pico
+        if SensorID.water_level in data and data[SensorID.water_level] != "-9":
+            water_level = data[SensorID.water_level]
+            if isinstance(water_level, (int, float)) and water_level > 150:
+                self.water_signal_pin.value(1)
+            else:
+                self.water_signal_pin.value(0)
 
         # Print for debugging
         print()

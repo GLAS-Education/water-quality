@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS main_data (
     id SERIAL PRIMARY KEY,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    experiment_id TEXT,
     temperature_1 REAL,
     temperature_2 REAL,
     temperature_3 REAL,
@@ -9,7 +10,8 @@ CREATE TABLE IF NOT EXISTS main_data (
     ph REAL,
     battery_level REAL,
     tds REAL,
-    turbidity REAL
+    turbidity REAL,
+    water_detected BOOLEAN
 );
 
 -- Wake data table  
